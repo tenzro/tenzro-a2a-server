@@ -80,9 +80,9 @@ curl -X POST https://a2a.tenzro.network/a2a/stream \
   }'
 ```
 
-## Agent Skills (19)
+## Agent Skills (23)
 
-The Tenzro A2A agent exposes 19 skills covering blockchain, AI, identity, payments, and agent orchestration:
+The Tenzro A2A agent exposes 23 skills covering blockchain, AI, identity, payments, cryptography, security, and agent orchestration:
 
 ### Core Blockchain
 
@@ -120,6 +120,15 @@ The Tenzro A2A agent exposes 19 skills covering blockchain, AI, identity, paymen
 | **Cross-Chain Token** | `crosschain` | ERC-7802 cross-chain token standard, mint/burn bridging |
 | **Compliance & KYC** | `compliance` | ERC-3643 T-REX compliance, identity verification, KYC attestation |
 
+### Cryptography & Security
+
+| Skill | ID | Description |
+|-------|-----|-------------|
+| **Cryptography** | `crypto` | Sign, verify, encrypt, decrypt, hash, key exchange (Ed25519, Secp256k1, AES-256-GCM, X25519) |
+| **TEE Security** | `tee` | Hardware attestation (TDX, SEV-SNP, Nitro, NVIDIA GPU), seal/unseal data in enclaves |
+| **Zero-Knowledge Proofs** | `zk` | Generate and verify Groth16 ZK proofs, manage proving keys and circuits |
+| **Key Custody** | `custody` | MPC threshold wallets, encrypted keystores, session keys, spending limits, key rotation |
+
 ### Verification & Onboarding
 
 | Skill | ID | Description |
@@ -155,6 +164,10 @@ The agent routes messages based on natural language content:
 | `swarm`, `parallel`, `orchestrat` | Swarm Orchestration |
 | `task`, `marketplace`, `post task`, `quote` | Task Marketplace |
 | `template`, `agent marketplace`, `rating` | Agent Marketplace |
+| `sign`, `verify signature`, `encrypt`, `decrypt`, `hash`, `key exchange`, `keypair` | Cryptography |
+| `tee`, `enclave`, `seal`, `unseal`, `attestation hardware` | TEE Security |
+| `zk proof`, `groth16`, `proving key`, `circuit` | Zero-Knowledge Proofs |
+| `mpc wallet`, `keystore`, `session key`, `spending limit`, `key rotation`, `custody` | Key Custody |
 | `verify`, `proof`, `attestation`, `zk` | Verification |
 | `join`, `micronode`, `onboard` | Join as MicroNode |
 | `nft`, `collection`, `mint`, `transfer nft` | NFT Management |
@@ -239,7 +252,7 @@ def tenzro_blockchain(query: str) -> str:
 ```
 Your Agent                    Tenzro Node
     |                              |
-    |-- GET /.well-known/agent.json -->  Agent Card (19 skills)
+    |-- GET /.well-known/agent.json -->  Agent Card (23 skills)
     |                              |
     |-- POST /a2a (tasks/send) ------->  Task Manager
     |                              |     |

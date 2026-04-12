@@ -52,8 +52,24 @@ def route_message(text: str) -> str:
         return "list_tokens"
 
     # ------------------------------------------------------------------
+    # Tier 2b: Crypto / TEE / Custody / ZK compound phrases
+    # ------------------------------------------------------------------
+    if any(k in t for k in ["key exchange", "x25519", "diffie-hellman"]):
+        return "crypto"
+    if any(k in t for k in ["mpc wallet", "keystore", "session key", "spending limit", "custody", "key share", "key rotation"]):
+        return "custody"
+    if any(k in t for k in ["zk proof", "zero knowledge", "proving key", "zk circuit", "groth16"]):
+        return "zk"
+    if any(k in t for k in ["tee enclave", "tee attestation", "tee provider", "seal data", "unseal data", "trusted execution"]):
+        return "tee"
+
+    # ------------------------------------------------------------------
     # Tier 3: Single-keyword domain routes
     # ------------------------------------------------------------------
+    if any(k in t for k in ["sign", "encrypt", "decrypt", "keccak"]):
+        return "crypto"
+    if any(k in t for k in ["tee", "enclave", "attestation", "seal"]):
+        return "tee"
     if any(k in t for k in ["deploy", "contract", "bytecode"]):
         return "contract"
     if any(k in t for k in ["nft", "collection", "mint nft"]):

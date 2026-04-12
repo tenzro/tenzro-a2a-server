@@ -1114,12 +1114,270 @@ async def handle_debridge(text: str, metadata: dict = None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Crypto
+# ---------------------------------------------------------------------------
+
+async def handle_crypto(text: str, metadata: dict = None) -> str:
+    t = text.lower()
+
+    if "sign" in t:
+        return (
+            "To sign a message, provide:\n"
+            "  - Private key (hex)\n"
+            "  - Message (hex)\n"
+            "  - Key type: ed25519 or secp256k1\n"
+            "Use the MCP server's sign_message tool for programmatic signing."
+        )
+
+    if "verify" in t:
+        return (
+            "To verify a signature, provide:\n"
+            "  - Public key (hex)\n"
+            "  - Message (hex)\n"
+            "  - Signature (hex)\n"
+            "  - Key type: ed25519 or secp256k1"
+        )
+
+    if "encrypt" in t:
+        return (
+            "To encrypt data with AES-256-GCM, provide:\n"
+            "  - Plaintext data (hex)\n"
+            "  - Encryption key (hex, 32 bytes)\n"
+            "Returns ciphertext with nonce and authentication tag."
+        )
+
+    if "decrypt" in t:
+        return (
+            "To decrypt AES-256-GCM data, provide:\n"
+            "  - Ciphertext (hex, includes nonce + tag)\n"
+            "  - Decryption key (hex, 32 bytes)"
+        )
+
+    if "keccak" in t:
+        result = await rpc_call("tenzro_hashKeccak256", {"data_hex": "0x"})
+        return f"Keccak-256 hash result:\n{json.dumps(result, indent=2)}"
+
+    if "sha" in t or "hash" in t:
+        result = await rpc_call("tenzro_hashSha256", {"data_hex": "0x"})
+        return f"SHA-256 hash result:\n{json.dumps(result, indent=2)}"
+
+    if "key exchange" in t or "x25519" in t or "diffie" in t:
+        return (
+            "X25519 key exchange requires:\n"
+            "  - Your private key (hex)\n"
+            "  - Peer's public key (hex)\n"
+            "Returns a shared secret for deriving encryption keys."
+        )
+
+    if "keygen" in t or "generate" in t or "keypair" in t:
+        key_type = "secp256k1" if "secp" in t else "ed25519"
+        result = await rpc_call("tenzro_generateKeypair", {"key_type": key_type})
+        return f"Generated {key_type} keypair:\n{json.dumps(result, indent=2)}"
+
+    return (
+        "Cryptographic operations:\n"
+        "  - 'Sign a message with ed25519'\n"
+        "  - 'Verify a signature'\n"
+        "  - 'Encrypt data with AES-256-GCM'\n"
+        "  - 'Decrypt data'\n"
+        "  - 'Hash data with SHA-256'\n"
+        "  - 'Hash data with Keccak-256'\n"
+        "  - 'Generate a keypair'\n"
+        "  - 'X25519 key exchange'"
+    )
+
+
+# ---------------------------------------------------------------------------
+# TEE
+# ---------------------------------------------------------------------------
+
+async def handle_tee(text: str, metadata: dict = None) -> str:
+    t = text.lower()
+
+    if "detect" in t:
+        result = await rpc_call("tenzro_detectTee", [])
+        return f"TEE hardware detection:\n{json.dumps(result, indent=2)}"
+
+    if "attest" in t or "quote" in t:
+        provider = "auto"
+        if "tdx" in t:
+            provider = "tdx"
+        elif "sev" in t or "snp" in t:
+            provider = "sev-snp"
+        elif "nitro" in t:
+            provider = "nitro"
+        elif "gpu" in t or "nvidia" in t:
+            provider = "gpu"
+        result = await rpc_call("tenzro_getTeeAttestation", {"provider": provider})
+        return f"TEE attestation ({provider}):\n{json.dumps(result, indent=2)}"
+
+    if "seal" in t and "unseal" not in t:
+        return (
+            "To seal data inside a TEE enclave, provide:\n"
+            "  - Plaintext data (hex)\n"
+            "  - Key ID for hardware-bound encryption\n"
+            "Sealed data can only be unsealed on the same hardware."
+        )
+
+    if "unseal" in t:
+        return (
+            "To unseal TEE-sealed data, provide:\n"
+            "  - Ciphertext (hex)\n"
+            "  - Key ID used during sealing\n"
+            "Must run on the same hardware that sealed the data."
+        )
+
+    if "provider" in t or "list" in t:
+        result = await rpc_call("tenzro_listTeeProviders", [])
+        return f"TEE providers:\n{json.dumps(result, indent=2)}"
+
+    return (
+        "TEE (Trusted Execution Environment) operations:\n"
+        "  - 'Detect TEE hardware'\n"
+        "  - 'Get TEE attestation'\n"
+        "  - 'Seal data in enclave'\n"
+        "  - 'Unseal enclave data'\n"
+        "  - 'List TEE providers'\n"
+        "Supported: Intel TDX, AMD SEV-SNP, AWS Nitro, NVIDIA GPU CC"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Custody
+# ---------------------------------------------------------------------------
+
+async def handle_custody(text: str, metadata: dict = None) -> str:
+    t = text.lower()
+
+    if "create" in t or "new" in t:
+        result = await rpc_call("tenzro_createMpcWallet", {"threshold": 2, "total_shares": 3, "key_type": "ed25519"})
+        return f"MPC wallet created:\n{json.dumps(result, indent=2)}"
+
+    if "export" in t:
+        addr = _extract_address(text)
+        if addr:
+            return (
+                f"To export keystore for {addr}:\n"
+                f"  Provide a password to encrypt the keystore file.\n"
+                f"  Uses Argon2id KDF (64MB memory, 3 iterations)."
+            )
+        return "Provide a wallet address to export. Example: 'Export keystore for 0xabc...'"
+
+    if "import" in t:
+        return (
+            "To import a keystore:\n"
+            "  - Provide the encrypted keystore JSON\n"
+            "  - Provide the decryption password\n"
+            "  The wallet will be restored with its MPC key shares."
+        )
+
+    if "rotate" in t:
+        addr = _extract_address(text)
+        if addr:
+            return f"Key rotation for {addr} refreshes MPC shares without changing the address."
+        return "Provide a wallet address to rotate keys. Example: 'Rotate keys for 0xabc...'"
+
+    if "spending" in t or "limit" in t:
+        if "set" in t:
+            return (
+                "To set spending limits, provide:\n"
+                "  - Wallet address\n"
+                "  - Daily limit (TNZO)\n"
+                "  - Per-transaction limit (TNZO)"
+            )
+        addr = _extract_address(text)
+        if addr:
+            result = await rpc_call("tenzro_getSpendingLimits", {"address": addr})
+            return f"Spending limits for {addr}:\n{json.dumps(result, indent=2)}"
+        return "Provide a wallet address. Example: 'Get spending limits for 0xabc...'"
+
+    if "session" in t:
+        if "revoke" in t or "cancel" in t:
+            return (
+                "To revoke a session key, provide:\n"
+                "  - Wallet address\n"
+                "  - Session ID"
+            )
+        return (
+            "To create a session key, provide:\n"
+            "  - Wallet address\n"
+            "  - Duration (seconds)\n"
+            "  - Maximum spend amount\n"
+            "Session keys enable automated transactions within limits."
+        )
+
+    if "share" in t:
+        addr = _extract_address(text)
+        if addr:
+            result = await rpc_call("tenzro_getKeyShares", {"address": addr})
+            return f"Key shares for {addr}:\n{json.dumps(result, indent=2)}"
+        return "Provide a wallet address. Example: 'Get key shares for 0xabc...'"
+
+    return (
+        "Custody & MPC wallet operations:\n"
+        "  - 'Create a new MPC wallet'\n"
+        "  - 'Export keystore for 0xabc...'\n"
+        "  - 'Import a keystore'\n"
+        "  - 'Rotate keys for 0xabc...'\n"
+        "  - 'Set spending limits'\n"
+        "  - 'Get spending limits for 0xabc...'\n"
+        "  - 'Create a session key'\n"
+        "  - 'Get key shares for 0xabc...'"
+    )
+
+
+# ---------------------------------------------------------------------------
+# ZK Proofs
+# ---------------------------------------------------------------------------
+
+async def handle_zk(text: str, metadata: dict = None) -> str:
+    t = text.lower()
+
+    if "create" in t or "prove" in t or "generate proof" in t:
+        return (
+            "To create a ZK proof, provide:\n"
+            "  - Circuit name (InferenceVerification, SettlementProof, IdentityProof)\n"
+            "  - Public inputs (JSON array)\n"
+            "  - Private witness (JSON)\n"
+            "Uses Groth16 SNARKs on BN254."
+        )
+
+    if "key" in t or "proving" in t:
+        return (
+            "To generate a proving key, provide:\n"
+            "  - Circuit name\n"
+            "  Requires a completed MPC trusted setup ceremony."
+        )
+
+    if "circuit" in t or "list" in t:
+        result = await rpc_call("tenzro_listZkCircuits", [])
+        return f"Available ZK circuits:\n{json.dumps(result, indent=2)}"
+
+    if "verify" in t:
+        result = await api_call("/api/verify/zk-proof", method="POST", body={
+            "proof_type": "groth16",
+            "proof": "test",
+            "public_inputs": [],
+        })
+        return f"ZK proof verification:\n{json.dumps(result, indent=2)}"
+
+    return (
+        "Zero-knowledge proof operations:\n"
+        "  - 'Create a ZK proof for inference verification'\n"
+        "  - 'Generate a proving key'\n"
+        "  - 'List ZK circuits'\n"
+        "  - 'Verify a ZK proof'\n"
+        "Circuits: InferenceVerification, SettlementProof, IdentityProof"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 
 async def handle_help(text: str, metadata: dict = None) -> str:
     return (
-        "Tenzro Network Agent -- 19 skills available:\n"
+        "Tenzro Network Agent -- 23 skills available:\n"
         "\n"
         "  Blockchain:\n"
         "    wallet     - Create wallets, check balances, send TNZO\n"
@@ -1143,6 +1401,10 @@ async def handle_help(text: str, metadata: dict = None) -> str:
         "    payment     - MPP/x402 payment challenges\n"
         "\n"
         "  Security & Compliance:\n"
+        "    crypto       - Sign, verify, encrypt, decrypt, hash, keygen\n"
+        "    tee          - TEE detection, attestation, seal/unseal data\n"
+        "    zk           - ZK proof creation, verification, circuits\n"
+        "    custody      - MPC wallets, keystore, sessions, limits\n"
         "    verification - ZK proofs, TEE attestations\n"
         "    compliance   - ERC-3643 T-REX KYC\n"
         "    crosschain   - ERC-7802 cross-chain tokens\n"
@@ -1192,5 +1454,9 @@ HANDLERS: dict[str, callable] = {
     "agent_spawning": handle_agent_spawning,
     "swarm_orchestration": handle_swarm,
     "debridge": handle_debridge,
+    "crypto": handle_crypto,
+    "tee": handle_tee,
+    "custody": handle_custody,
+    "zk": handle_zk,
     "help": handle_help,
 }
