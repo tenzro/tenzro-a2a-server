@@ -231,7 +231,7 @@ async def handle_inference(text: str, metadata: dict = None) -> str:
             if idx >= 0:
                 prompt = text[idx + len(kw):].strip().lstrip(":").strip()
                 break
-        result = await rpc_call("tenzro_chat", [{"messages": [{"role": "user", "content": prompt}]}])
+        result = await rpc_call("tenzro_chat", {"model_id": "default", "message": prompt, "max_tokens": 100})
         return json.dumps(result, indent=2)
 
     if "endpoint" in t:
