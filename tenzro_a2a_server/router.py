@@ -58,7 +58,9 @@ def route_message(text: str) -> str:
         return "contract"
     if any(k in t for k in ["nft", "collection", "mint nft"]):
         return "nft"
-    if any(k in t for k in ["bridge", "cross-chain", "layerzero", "ccip", "debridge"]):
+    if any(k in t for k in ["debridge", "dln", "same chain swap"]):
+        return "debridge"
+    if any(k in t for k in ["bridge", "cross-chain", "layerzero", "ccip"]):
         return "bridge"
     if any(k in t for k in ["compliance", "kyc", "t-rex", "erc-3643", "whitelist"]):
         return "compliance"

@@ -158,7 +158,7 @@ The agent routes messages based on natural language content:
 | `verify`, `proof`, `attestation`, `zk` | Verification |
 | `join`, `micronode`, `onboard` | Join as MicroNode |
 | `nft`, `collection`, `mint`, `transfer nft` | NFT Management |
-| `bridge`, `cross-chain`, `layerzero`, `ccip`, `debridge` | Cross-Chain Bridge |
+| `bridge`, `cross-chain`, `layerzero`, `ccip`, `debridge`, `dln`, `same chain swap` | Cross-Chain Bridge |
 | `compliance`, `kyc`, `t-rex`, `erc-3643`, `whitelist` | Compliance & KYC |
 | `erc-7802`, `cross-chain token`, `crosschain` | Cross-Chain Token |
 | `event`, `subscribe`, `webhook`, `stream`, `listen` | Event Streaming |
@@ -264,6 +264,9 @@ Your Agent                    Tenzro Node
 | **MCP** | Structured tool calls from Claude/Cursor | `mcp.tenzro.network/mcp` |
 | **JSON-RPC** | Direct EVM-compatible RPC | `rpc.tenzro.network` |
 | **Web API** | REST verification and status | `api.tenzro.network` |
+| **LI.FI MCP** | Cross-chain bridge aggregation (66 chains) | `lifi-mcp.tenzro.network/mcp` |
+| **deBridge** | Official DLN cross-chain swaps | `agents.debridge.com/mcp` |
+| **1inch** | DEX aggregation, Fusion swaps | `api.1inch.com/mcp/protocol` |
 
 ## Running the Server
 

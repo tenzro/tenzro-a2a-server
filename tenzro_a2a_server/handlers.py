@@ -1078,6 +1078,42 @@ async def handle_swarm(text: str, metadata: dict = None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# deBridge
+# ---------------------------------------------------------------------------
+
+async def handle_debridge(text: str, metadata: dict = None) -> str:
+    t = text.lower()
+    if "chain" in t or "supported" in t or "network" in t:
+        result = await rpc_call("tenzro_debridgeGetChains", {})
+        if isinstance(result, dict):
+            chains = result.get("chains", result)
+            if isinstance(chains, list):
+                lines = [f"deBridge supported chains ({len(chains)}):"]
+                for c in chains[:20]:
+                    name = c.get("name", c.get("chainName", "?"))
+                    cid = c.get("chainId", c.get("id", "?"))
+                    lines.append(f"  - {name} (chainId: {cid})")
+                return "\n".join(lines)
+        return json.dumps(result, indent=2)
+    if "search" in t or "find token" in t:
+        words = text.split()
+        query = words[-1] if len(words) > 1 else "USDC"
+        result = await rpc_call("tenzro_debridgeSearchTokens", {"query": query})
+        return json.dumps(result, indent=2)
+    if "instruction" in t:
+        result = await rpc_call("tenzro_debridgeGetInstructions", {})
+        return json.dumps(result, indent=2)
+    if "swap" in t and "same" in t:
+        return "To do a same-chain swap via deBridge, provide: chain_id, token_in address, token_out address, and amount."
+    return ("deBridge DLN cross-chain operations:\n"
+            "  - 'debridge chains' — list supported networks\n"
+            "  - 'debridge search USDC' — find token addresses\n"
+            "  - 'debridge instructions' — operational guidance\n"
+            "  - 'debridge create tx' — create cross-chain transfer\n"
+            "  - 'debridge same chain swap' — swap on same chain")
+
+
+# ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 
@@ -1155,5 +1191,6 @@ HANDLERS: dict[str, callable] = {
     "agent_marketplace": handle_agent_marketplace,
     "agent_spawning": handle_agent_spawning,
     "swarm_orchestration": handle_swarm,
+    "debridge": handle_debridge,
     "help": handle_help,
 }
