@@ -1372,12 +1372,63 @@ async def handle_zk(text: str, metadata: dict = None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Onboarding Keys
+# ---------------------------------------------------------------------------
+
+def _extract_key(text: str) -> str | None:
+    """Extract a tenzro_ onboarding key from text."""
+    m = re.search(r"tenzro_[A-Za-z0-9_\-]+", text)
+    return m.group(0) if m else None
+
+
+async def handle_onboarding_key(text: str, metadata: dict = None) -> str:
+    """Handle onboarding key operations."""
+    q = text.lower()
+    if "list" in q or "show" in q:
+        result = await rpc_call("tenzro_listOnboardingKeys", {})
+        if isinstance(result, list):
+            if not result:
+                return "No onboarding keys found."
+            lines = ["Onboarding keys:"]
+            for k in result:
+                lines.append(
+                    f"  Name: {k.get('name', '?')} | DID: {k.get('did', '?')} "
+                    f"| Type: {k.get('identity_type', '?')} | Created: {k.get('created_at', '?')}"
+                )
+            return "\n".join(lines)
+        return str(result)
+    elif "revoke" in q or "disable" in q:
+        did = _extract_did(text)
+        if did:
+            result = await rpc_call("tenzro_revokeOnboardingKey", {"did": did})
+            return f"Onboarding key revoked for DID: {did}"
+        return "Please specify the DID to revoke (e.g. 'revoke onboarding key did:tenzro:machine:...')"
+    elif "validate" in q or "check" in q:
+        key = _extract_key(text)
+        if key:
+            result = await rpc_call("tenzro_validateOnboardingKey", {"key": key})
+            return json.dumps(result, indent=2)
+        return "Please provide the key to validate (e.g. 'validate onboarding key tenzro_...')"
+    else:
+        return (
+            "Onboarding key management:\n"
+            "  - 'list onboarding keys' — show all keys (values hidden)\n"
+            "  - 'revoke onboarding key did:tenzro:machine:...' — revoke by DID\n"
+            "  - 'validate onboarding key tenzro_...' — check if a key is valid\n"
+            "\n"
+            "To get a new key:\n"
+            "  tenzro-cli join --name \"my-agent\"   (one-command CLI)\n"
+            "  or call tenzro_issueOnboardingKey RPC with name, did, address, identity_type"
+        )
+
+
+# ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 
 async def handle_help(text: str, metadata: dict = None) -> str:
     return (
-        "Tenzro Network Agent -- 23 skills available:\n"
+        "Tenzro Network Agent -- 24 skills available:\n"
         "\n"
         "  Blockchain:\n"
         "    wallet     - Create wallets, check balances, send TNZO\n"
@@ -1410,11 +1461,13 @@ async def handle_help(text: str, metadata: dict = None) -> str:
         "    crosschain   - ERC-7802 cross-chain tokens\n"
         "\n"
         "  Infrastructure:\n"
-        "    join    - Join as MicroNode (zero-install onboarding)\n"
-        "    events  - WebSocket/webhook event streaming\n"
+        "    join             - Join as MicroNode (zero-install onboarding)\n"
+        "    onboarding_key   - Issue/list/revoke/validate bearer access keys\n"
+        "    events           - WebSocket/webhook event streaming\n"
         "\n"
         "Try: 'Check my TNZO balance for 0xabc...'\n"
         "     'Join the Tenzro Network as Alice'\n"
+        "     'List onboarding keys'\n"
         "     'List available AI models'"
     )
 
@@ -1458,5 +1511,6 @@ HANDLERS: dict[str, callable] = {
     "tee": handle_tee,
     "custody": handle_custody,
     "zk": handle_zk,
+    "onboarding_key": handle_onboarding_key,
     "help": handle_help,
 }

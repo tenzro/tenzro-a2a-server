@@ -80,9 +80,9 @@ curl -X POST https://a2a.tenzro.network/a2a/stream \
   }'
 ```
 
-## Agent Skills (23)
+## Agent Skills (24)
 
-The Tenzro A2A agent exposes 23 skills covering blockchain, AI, identity, payments, cryptography, security, and agent orchestration:
+The Tenzro A2A agent exposes 24 skills covering blockchain, AI, identity, payments, cryptography, security, and agent orchestration:
 
 ### Core Blockchain
 
@@ -136,6 +136,7 @@ The Tenzro A2A agent exposes 23 skills covering blockchain, AI, identity, paymen
 | **Proof Verification** | `verification` | Verify ZK proofs, TEE attestations, transaction signatures |
 | **Event Streaming** | `events` | Subscribe to blockchain events via WebSocket, webhooks, gRPC |
 | **Join as MicroNode** | `join` | Zero-install network participation with auto-provisioned DID + wallet |
+| **Onboarding Keys** | `onboarding_key` | Issue, list, revoke, and validate bearer access keys for programmatic agents |
 
 ## A2A Methods
 
@@ -170,6 +171,7 @@ The agent routes messages based on natural language content:
 | `mpc wallet`, `keystore`, `session key`, `spending limit`, `key rotation`, `custody` | Key Custody |
 | `verify`, `proof`, `attestation`, `zk` | Verification |
 | `join`, `micronode`, `onboard` | Join as MicroNode |
+| `onboarding key`, `issue key`, `revoke key`, `validate key`, `bearer key`, `tenzro_` | Onboarding Keys |
 | `nft`, `collection`, `mint`, `transfer nft` | NFT Management |
 | `bridge`, `cross-chain`, `layerzero`, `ccip`, `debridge`, `dln`, `same chain swap` | Cross-Chain Bridge |
 | `compliance`, `kyc`, `t-rex`, `erc-3643`, `whitelist` | Compliance & KYC |
@@ -178,6 +180,47 @@ The agent routes messages based on natural language content:
 | `canton` | Cross-chain bridge |
 | `status`, `health`, `node`, `peer`, `network` | Node status |
 | `faucet`, `tokens` | Testnet faucet |
+
+## Authentication
+
+The A2A server supports **onboarding keys** for programmatic agent access — lightweight bearer tokens bound to a TDIP identity:
+
+**Getting a key:**
+
+```bash
+# Option 1: CLI (recommended for first-time setup)
+tenzro-cli join --name "my-agent"
+
+# Option 2: Natural language via A2A
+curl -X POST https://a2a.tenzro.network/a2a \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"tasks/send","params":{"message":{"role":"user","parts":[{"type":"text","text":"list onboarding keys"}]}},"id":1}'
+```
+
+**Using a key:**
+
+```bash
+curl -X POST https://a2a.tenzro.network/a2a \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer tenzro_..." \
+  -d '{"jsonrpc":"2.0","method":"tasks/send","params":{"message":{"role":"user","parts":[{"type":"text","text":"send 1 TNZO from 0xfrom to 0xto"}]}},"id":1}'
+```
+
+**Access tiers:**
+
+| Tier | Operations | Auth Required |
+|------|-----------|---------------|
+| Public | Read-only queries (balances, blocks, models) | No |
+| Authenticated | Write operations (transactions, staking, identity registration) | Onboarding key or OAuth token |
+
+**Onboarding key skills** (routed via natural language):
+
+| Query | Action |
+|-------|--------|
+| `list onboarding keys` | Show all keys (values hidden) |
+| `revoke onboarding key did:tenzro:machine:...` | Revoke by DID |
+| `validate onboarding key tenzro_...` | Verify a key is valid |
+| `how do I get an onboarding key` | Instructions |
 
 ## Examples
 
@@ -252,7 +295,7 @@ def tenzro_blockchain(query: str) -> str:
 ```
 Your Agent                    Tenzro Node
     |                              |
-    |-- GET /.well-known/agent.json -->  Agent Card (23 skills)
+    |-- GET /.well-known/agent.json -->  Agent Card (24 skills)
     |                              |
     |-- POST /a2a (tasks/send) ------->  Task Manager
     |                              |     |
