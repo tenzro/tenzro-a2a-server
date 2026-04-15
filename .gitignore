@@ -6,3 +6,7 @@ dist/
 .DS_Store
 __pycache__/
 *.pyc
+
+# Claude Code
+CLAUDE.md
+.claude/
