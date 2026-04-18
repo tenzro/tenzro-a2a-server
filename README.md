@@ -133,7 +133,7 @@ The Tenzro A2A agent exposes 24 skills covering blockchain, AI, identity, paymen
 
 | Skill | ID | Description |
 |-------|-----|-------------|
-| **Proof Verification** | `verification` | Verify ZK proofs, TEE attestations, transaction signatures |
+| **Proof Verification** | `verification` | Verify ZK proofs, VRF proofs (RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI), TEE attestations, transaction signatures |
 | **Event Streaming** | `events` | Subscribe to blockchain events via WebSocket, webhooks, gRPC |
 | **Join as MicroNode** | `join` | Zero-install network participation with auto-provisioned DID + wallet |
 | **Onboarding Keys** | `onboarding_key` | Issue, list, revoke, and validate bearer access keys for programmatic agents |
@@ -169,7 +169,7 @@ The agent routes messages based on natural language content:
 | `tee`, `enclave`, `seal`, `unseal`, `attestation hardware` | TEE Security |
 | `zk proof`, `groth16`, `proving key`, `circuit` | Zero-Knowledge Proofs |
 | `mpc wallet`, `keystore`, `session key`, `spending limit`, `key rotation`, `custody` | Key Custody |
-| `verify`, `proof`, `attestation`, `zk` | Verification |
+| `verify`, `proof`, `attestation`, `zk`, `vrf`, `randomness` | Verification |
 | `join`, `micronode`, `onboard` | Join as MicroNode |
 | `onboarding key`, `issue key`, `revoke key`, `validate key`, `bearer key`, `tenzro_` | Onboarding Keys |
 | `nft`, `collection`, `mint`, `transfer nft` | NFT Management |
