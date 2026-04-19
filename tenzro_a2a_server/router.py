@@ -15,8 +15,6 @@ def route_message(text: str) -> str:
     # ------------------------------------------------------------------
     # Tier 1: Multi-word compound phrases (highest priority)
     # ------------------------------------------------------------------
-    if any(k in t for k in ["onboarding key", "issue key", "revoke key", "validate key", "list keys", "bearer key", "tenzro_"]):
-        return "onboarding_key"
     if any(k in t for k in ["join", "micronode", "onboard", "participate"]):
         return "join"
     if (

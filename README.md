@@ -22,8 +22,8 @@ pip install tenzro-a2a-server
 Or from source:
 
 ```bash
-git clone https://github.com/tenzro/tenzro-a2a-server.git
-cd tenzro-a2a-server
+git clone https://github.com/tenzro/tenzro-network.git
+cd integrations/a2a
 pip install .
 ```
 
@@ -34,6 +34,7 @@ pip install .
 | Agent Card | `GET /.well-known/agent.json` | Agent capability discovery |
 | A2A RPC | `POST /a2a` | JSON-RPC 2.0 task execution |
 | A2A Stream | `POST /a2a/stream` | Server-Sent Events streaming |
+| Health | `GET /health` | Health check |
 
 ## Quick Start
 
@@ -80,9 +81,9 @@ curl -X POST https://a2a.tenzro.network/a2a/stream \
   }'
 ```
 
-## Agent Skills (24)
+## Agent Skills (19)
 
-The Tenzro A2A agent exposes 24 skills covering blockchain, AI, identity, payments, cryptography, security, and agent orchestration:
+The Tenzro A2A agent exposes 19 skills covering blockchain, AI, identity, payments, and agent orchestration:
 
 ### Core Blockchain
 
@@ -120,31 +121,21 @@ The Tenzro A2A agent exposes 24 skills covering blockchain, AI, identity, paymen
 | **Cross-Chain Token** | `crosschain` | ERC-7802 cross-chain token standard, mint/burn bridging |
 | **Compliance & KYC** | `compliance` | ERC-3643 T-REX compliance, identity verification, KYC attestation |
 
-### Cryptography & Security
-
-| Skill | ID | Description |
-|-------|-----|-------------|
-| **Cryptography** | `crypto` | Sign, verify, encrypt, decrypt, hash, key exchange (Ed25519, Secp256k1, AES-256-GCM, X25519) |
-| **TEE Security** | `tee` | Hardware attestation (TDX, SEV-SNP, Nitro, NVIDIA GPU), seal/unseal data in enclaves |
-| **Zero-Knowledge Proofs** | `zk` | Generate and verify Groth16 ZK proofs, manage proving keys and circuits |
-| **Key Custody** | `custody` | MPC threshold wallets, encrypted keystores, session keys, spending limits, key rotation |
-
 ### Verification & Onboarding
 
 | Skill | ID | Description |
 |-------|-----|-------------|
-| **Proof Verification** | `verification` | Verify ZK proofs, VRF proofs (RFC 9381 ECVRF-EDWARDS25519-SHA512-TAI), TEE attestations, transaction signatures |
+| **Proof Verification** | `verification` | Verify ZK proofs, TEE attestations, transaction signatures |
 | **Event Streaming** | `events` | Subscribe to blockchain events via WebSocket, webhooks, gRPC |
 | **Join as MicroNode** | `join` | Zero-install network participation with auto-provisioned DID + wallet |
-| **Onboarding Keys** | `onboarding_key` | Issue, list, revoke, and validate bearer access keys for programmatic agents |
 
 ## A2A Methods
 
 | Method | Description | Parameters |
 |--------|-------------|------------|
 | `tasks/send` | Send a message, create or continue a task | `message` (role, parts), `metadata` |
-| `tasks/get` | Get task by ID | `id`, `history_length` |
-| `tasks/list` | List tasks | `context_id` (optional) |
+| `tasks/get` | Get task by ID | `id`, `historyLength` |
+| `tasks/list` | List tasks | `contextId` (optional) |
 | `tasks/cancel` | Cancel a running task | `id` |
 
 ## Message Routing
@@ -165,62 +156,16 @@ The agent routes messages based on natural language content:
 | `swarm`, `parallel`, `orchestrat` | Swarm Orchestration |
 | `task`, `marketplace`, `post task`, `quote` | Task Marketplace |
 | `template`, `agent marketplace`, `rating` | Agent Marketplace |
-| `sign`, `verify signature`, `encrypt`, `decrypt`, `hash`, `key exchange`, `keypair` | Cryptography |
-| `tee`, `enclave`, `seal`, `unseal`, `attestation hardware` | TEE Security |
-| `zk proof`, `groth16`, `proving key`, `circuit` | Zero-Knowledge Proofs |
-| `mpc wallet`, `keystore`, `session key`, `spending limit`, `key rotation`, `custody` | Key Custody |
-| `verify`, `proof`, `attestation`, `zk`, `vrf`, `randomness` | Verification |
+| `verify`, `proof`, `attestation`, `zk` | Verification |
 | `join`, `micronode`, `onboard` | Join as MicroNode |
-| `onboarding key`, `issue key`, `revoke key`, `validate key`, `bearer key`, `tenzro_` | Onboarding Keys |
 | `nft`, `collection`, `mint`, `transfer nft` | NFT Management |
-| `bridge`, `cross-chain`, `layerzero`, `ccip`, `debridge`, `dln`, `same chain swap` | Cross-Chain Bridge |
+| `bridge`, `cross-chain`, `layerzero`, `ccip`, `debridge` | Cross-Chain Bridge |
 | `compliance`, `kyc`, `t-rex`, `erc-3643`, `whitelist` | Compliance & KYC |
 | `erc-7802`, `cross-chain token`, `crosschain` | Cross-Chain Token |
 | `event`, `subscribe`, `webhook`, `stream`, `listen` | Event Streaming |
 | `canton` | Cross-chain bridge |
 | `status`, `health`, `node`, `peer`, `network` | Node status |
 | `faucet`, `tokens` | Testnet faucet |
-
-## Authentication
-
-The A2A server supports **onboarding keys** for programmatic agent access — lightweight bearer tokens bound to a TDIP identity:
-
-**Getting a key:**
-
-```bash
-# Option 1: CLI (recommended for first-time setup)
-tenzro-cli join --name "my-agent"
-
-# Option 2: Natural language via A2A
-curl -X POST https://a2a.tenzro.network/a2a \
-  -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","method":"tasks/send","params":{"message":{"role":"user","parts":[{"type":"text","text":"list onboarding keys"}]}},"id":1}'
-```
-
-**Using a key:**
-
-```bash
-curl -X POST https://a2a.tenzro.network/a2a \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer tenzro_..." \
-  -d '{"jsonrpc":"2.0","method":"tasks/send","params":{"message":{"role":"user","parts":[{"type":"text","text":"send 1 TNZO from 0xfrom to 0xto"}]}},"id":1}'
-```
-
-**Access tiers:**
-
-| Tier | Operations | Auth Required |
-|------|-----------|---------------|
-| Public | Read-only queries (balances, blocks, models) | No |
-| Authenticated | Write operations (transactions, staking, identity registration) | Onboarding key or OAuth token |
-
-**Onboarding key skills** (routed via natural language):
-
-| Query | Action |
-|-------|--------|
-| `list onboarding keys` | Show all keys (values hidden) |
-| `revoke onboarding key did:tenzro:machine:...` | Revoke by DID |
-| `validate onboarding key tenzro_...` | Verify a key is valid |
-| `how do I get an onboarding key` | Instructions |
 
 ## Examples
 
@@ -295,7 +240,7 @@ def tenzro_blockchain(query: str) -> str:
 ```
 Your Agent                    Tenzro Node
     |                              |
-    |-- GET /.well-known/agent.json -->  Agent Card (24 skills)
+    |-- GET /.well-known/agent.json -->  Agent Card (19 skills)
     |                              |
     |-- POST /a2a (tasks/send) ------->  Task Manager
     |                              |     |
@@ -320,9 +265,6 @@ Your Agent                    Tenzro Node
 | **MCP** | Structured tool calls from Claude/Cursor | `mcp.tenzro.network/mcp` |
 | **JSON-RPC** | Direct EVM-compatible RPC | `rpc.tenzro.network` |
 | **Web API** | REST verification and status | `api.tenzro.network` |
-| **LI.FI MCP** | Cross-chain bridge aggregation (66 chains) | `lifi-mcp.tenzro.network/mcp` |
-| **deBridge** | Official DLN cross-chain swaps | `agents.debridge.com/mcp` |
-| **1inch** | DEX aggregation, Fusion swaps | `api.1inch.com/mcp/protocol` |
 
 ## Running the Server
 
@@ -348,6 +290,7 @@ curl https://localhost:3002/.well-known/agent.json
 |----------|---------|-------------|
 | `TENZRO_RPC_URL` | `https://rpc.tenzro.network` | Tenzro JSON-RPC endpoint |
 | `TENZRO_API_URL` | `https://api.tenzro.network` | Tenzro Web API endpoint |
+| `TENZRO_A2A_BASE_URL` | `https://a2a.tenzro.network` | Base URL for Agent Card |
 
 Command-line options:
 
@@ -361,8 +304,7 @@ Command-line options:
 | Resource | URL |
 |----------|-----|
 | Tenzro Network | [tenzro.com](https://tenzro.com) |
-| MCP Server | [github.com/tenzro/tenzro-mcp-server](https://github.com/tenzro/tenzro-mcp-server) |
-| TenzroClaw | [github.com/tenzro/TenzroClaw](https://github.com/tenzro/TenzroClaw) |
+| MCP Server | [github.com/tenzro/tenzro-network](https://github.com/tenzro/tenzro-network) |
 | A2A Protocol | [a2a-protocol.org](https://a2a-protocol.org) |
 
 ## Contact
