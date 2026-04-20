@@ -1372,6 +1372,370 @@ async def handle_zk(text: str, metadata: dict = None) -> str:
 
 
 # ---------------------------------------------------------------------------
+# AP2 Mandate Verification (Google AP2 spec)
+# ---------------------------------------------------------------------------
+
+async def handle_ap2(text: str, metadata: dict = None) -> str:
+    """AP2 session lifecycle + mandate verification (Intent/Cart/Payment VDCs)."""
+    t = text.lower()
+
+    # Protocol info
+    if "protocol" in t or "info" in t or "version" in t or "supported" in t:
+        result = await rpc_call("tenzro_ap2ProtocolInfo", [])
+        return f"AP2 protocol info:\n{json.dumps(result, indent=2)}"
+
+    # Verify a single mandate VDC - requires JSON in metadata
+    if "verify" in t and ("mandate" in t or "vdc" in t):
+        vdc = (metadata or {}).get("vdc")
+        if vdc is None:
+            return (
+                "To verify an AP2 mandate, send the full VDC envelope as "
+                "`metadata.vdc` (JSON-LD VC with proof).\n"
+                "Supports Intent, Cart, and Payment mandates per Google's AP2 spec."
+            )
+        result = await rpc_call("tenzro_ap2VerifyMandate", [{"vdc": vdc}])
+        return f"AP2 mandate verification:\n{json.dumps(result, indent=2)}"
+
+    # Validate Intent+Cart pair
+    if ("validate" in t or "pair" in t) and ("intent" in t or "cart" in t):
+        md = metadata or {}
+        intent_vdc = md.get("intent_vdc") or md.get("intent")
+        cart_vdc = md.get("cart_vdc") or md.get("cart")
+        if intent_vdc is None or cart_vdc is None:
+            return (
+                "To validate an AP2 mandate pair, send both VDCs as "
+                "`metadata.intent_vdc` and `metadata.cart_vdc`.\n"
+                "The node verifies each VDC and cross-checks intent↔cart consistency."
+            )
+        result = await rpc_call(
+            "tenzro_ap2ValidateMandatePair",
+            [{"intent_vdc": intent_vdc, "cart_vdc": cart_vdc}],
+        )
+        return f"AP2 Intent/Cart pair validation:\n{json.dumps(result, indent=2)}"
+
+    # Session lifecycle
+    session_id = _extract_id(text)
+    md = metadata or {}
+
+    if "create" in t and "session" in t:
+        agent_did = md.get("agent_did") or _extract_did(text)
+        provider_did = md.get("provider_did")
+        service = md.get("service", "default")
+        amount = md.get("max_amount") or _extract_amount(text)
+        asset = md.get("asset", "TNZO")
+        if agent_did and provider_did and amount is not None:
+            result = await rpc_call(
+                "tenzro_ap2CreateSession",
+                [{
+                    "agent_did": agent_did,
+                    "provider_did": provider_did,
+                    "service": service,
+                    "max_amount": str(amount),
+                    "asset": asset,
+                }],
+            )
+            return f"AP2 session created:\n{json.dumps(result, indent=2)}"
+        return (
+            "To create an AP2 session, provide:\n"
+            "  metadata.agent_did, metadata.provider_did, metadata.max_amount\n"
+            "  metadata.service (optional), metadata.asset (default TNZO)"
+        )
+
+    if "authorize" in t and session_id:
+        amount = _extract_amount(text) or md.get("amount")
+        if amount is None:
+            return f"Provide an amount to authorize for session {session_id}."
+        result = await rpc_call(
+            "tenzro_ap2AuthorizePayment",
+            [{"session_id": session_id, "amount": str(amount)}],
+        )
+        return f"AP2 authorization:\n{json.dumps(result, indent=2)}"
+
+    if "execute" in t and session_id:
+        auth_id = md.get("authorization_id") or _extract_id(text)
+        if not auth_id:
+            return f"Provide authorization_id in metadata to execute on session {session_id}."
+        result = await rpc_call(
+            "tenzro_ap2ExecutePayment",
+            [{"session_id": session_id, "authorization_id": auth_id}],
+        )
+        return f"AP2 execution receipt:\n{json.dumps(result, indent=2)}"
+
+    if "cancel" in t and session_id:
+        result = await rpc_call(
+            "tenzro_ap2CancelSession", [{"session_id": session_id}]
+        )
+        return f"AP2 session cancelled:\n{json.dumps(result, indent=2)}"
+
+    if session_id:
+        result = await rpc_call(
+            "tenzro_ap2GetSession", [{"session_id": session_id}]
+        )
+        return f"AP2 session:\n{json.dumps(result, indent=2)}"
+
+    if "list" in t:
+        agent_did = md.get("agent_did") or _extract_did(text)
+        if agent_did:
+            result = await rpc_call(
+                "tenzro_ap2ListAgentSessions", [{"agent_did": agent_did}]
+            )
+            return f"AP2 sessions for {agent_did}:\n{json.dumps(result, indent=2)}"
+        return "Provide an agent DID (metadata.agent_did) to list sessions."
+
+    return (
+        "AP2 (Agentic Payment Protocol) operations:\n"
+        "  - 'AP2 protocol info' — version, supported mandate types & DID methods\n"
+        "  - 'Create AP2 session' (needs metadata.agent_did, provider_did, max_amount)\n"
+        "  - 'Authorize <amount> on session <id>'\n"
+        "  - 'Execute session <id>' (needs metadata.authorization_id)\n"
+        "  - 'Cancel session <id>' / 'Get session <id>' / 'List sessions'\n"
+        "  - 'Verify AP2 mandate' (send metadata.vdc)\n"
+        "  - 'Validate AP2 intent/cart pair' (metadata.intent_vdc + cart_vdc)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# ERC-8004 Trustless Agents Registry
+# ---------------------------------------------------------------------------
+
+async def handle_erc8004(text: str, metadata: dict = None) -> str:
+    """ERC-8004 on-chain agent identity and reputation (EVM calldata helpers)."""
+    t = text.lower()
+    md = metadata or {}
+
+    if "derive" in t or "agent id" in t or "agentid" in t:
+        owner = md.get("owner") or _extract_address(text)
+        salt = md.get("salt")
+        if owner and salt is not None:
+            result = await rpc_call(
+                "tenzro_erc8004DeriveAgentId",
+                [{"owner": owner, "salt": salt}],
+            )
+            return f"ERC-8004 agentId:\n{json.dumps(result, indent=2)}"
+        return (
+            "Derive an ERC-8004 agentId with:\n"
+            "  metadata.owner (0x address), metadata.salt (bytes32 hex)"
+        )
+
+    if "register" in t:
+        agent_id = md.get("agent_id")
+        uri = md.get("registration_data_uri") or md.get("uri")
+        owner = md.get("owner") or _extract_address(text)
+        if agent_id and uri and owner:
+            result = await rpc_call(
+                "tenzro_erc8004EncodeRegister",
+                [{
+                    "agent_id": agent_id,
+                    "registration_data_uri": uri,
+                    "owner": owner,
+                }],
+            )
+            return f"ERC-8004 register calldata:\n{json.dumps(result, indent=2)}"
+        return (
+            "Encode an ERC-8004 register() call with:\n"
+            "  metadata.agent_id, metadata.registration_data_uri, metadata.owner"
+        )
+
+    if "get agent" in t or ("get" in t and "agent" in t and "id" in t):
+        agent_id = md.get("agent_id")
+        if not agent_id:
+            return "Provide metadata.agent_id to encode getAgent() calldata."
+        if md.get("returndata"):
+            result = await rpc_call(
+                "tenzro_erc8004DecodeGetAgent",
+                [{"returndata": md["returndata"]}],
+            )
+            return f"ERC-8004 agent (decoded):\n{json.dumps(result, indent=2)}"
+        result = await rpc_call(
+            "tenzro_erc8004EncodeGetAgent", [{"agent_id": agent_id}]
+        )
+        return f"ERC-8004 getAgent calldata:\n{json.dumps(result, indent=2)}"
+
+    if "feedback" in t or "reputation" in t:
+        agent_id = md.get("agent_id")
+        score = md.get("score")
+        feedback_auth_id = md.get("feedback_auth_id") or md.get("auth_id")
+        feedback_uri = md.get("feedback_uri") or md.get("uri")
+        if agent_id and score is not None and feedback_auth_id and feedback_uri:
+            result = await rpc_call(
+                "tenzro_erc8004EncodeFeedback",
+                [{
+                    "agent_id": agent_id,
+                    "score": score,
+                    "feedback_auth_id": feedback_auth_id,
+                    "feedback_uri": feedback_uri,
+                }],
+            )
+            return f"ERC-8004 feedback calldata:\n{json.dumps(result, indent=2)}"
+        return (
+            "Encode ERC-8004 reputation feedback with:\n"
+            "  metadata.agent_id, metadata.score, metadata.feedback_auth_id, metadata.feedback_uri"
+        )
+
+    if "request" in t and "validation" in t:
+        agent_id = md.get("agent_id")
+        validator_id = md.get("validator_id")
+        request_uri = md.get("request_uri") or md.get("uri")
+        data_hash = md.get("data_hash")
+        if agent_id and validator_id and request_uri and data_hash:
+            result = await rpc_call(
+                "tenzro_erc8004EncodeRequestValidation",
+                [{
+                    "agent_id": agent_id,
+                    "validator_id": validator_id,
+                    "request_uri": request_uri,
+                    "data_hash": data_hash,
+                }],
+            )
+            return f"ERC-8004 requestValidation calldata:\n{json.dumps(result, indent=2)}"
+        return (
+            "Encode ERC-8004 requestValidation() with:\n"
+            "  metadata.agent_id, metadata.validator_id, metadata.request_uri, metadata.data_hash"
+        )
+
+    if "submit" in t and "validation" in t:
+        data_hash = md.get("data_hash")
+        response = md.get("response")
+        response_uri = md.get("response_uri") or md.get("uri")
+        tag = md.get("tag")
+        if data_hash and response is not None and response_uri and tag:
+            result = await rpc_call(
+                "tenzro_erc8004EncodeSubmitValidation",
+                [{
+                    "data_hash": data_hash,
+                    "response": response,
+                    "response_uri": response_uri,
+                    "tag": tag,
+                }],
+            )
+            return f"ERC-8004 submitValidation calldata:\n{json.dumps(result, indent=2)}"
+        return (
+            "Encode ERC-8004 submitValidation() with:\n"
+            "  metadata.data_hash, metadata.response, metadata.response_uri, metadata.tag"
+        )
+
+    return (
+        "ERC-8004 Trustless Agents Registry operations:\n"
+        "  - 'Derive agent id' (metadata.owner, metadata.salt)\n"
+        "  - 'Register agent' (metadata.agent_id, registration_data_uri, owner)\n"
+        "  - 'Get agent <id>' (metadata.agent_id; add metadata.returndata to decode)\n"
+        "  - 'Submit feedback' (agent_id, score, feedback_auth_id, feedback_uri)\n"
+        "  - 'Request validation' (agent_id, validator_id, request_uri, data_hash)\n"
+        "  - 'Submit validation' (data_hash, response, response_uri, tag)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# Wormhole Cross-Chain Bridge
+# ---------------------------------------------------------------------------
+
+async def handle_wormhole(text: str, metadata: dict = None) -> str:
+    """Wormhole chain id lookup, VAA parsing, and token bridging."""
+    t = text.lower()
+    md = metadata or {}
+
+    if "chain id" in t or "chainid" in t:
+        chain = md.get("chain")
+        if not chain:
+            words = text.strip().split()
+            chain = words[-1].rstrip("?.!,;").lower() if words else None
+        if chain:
+            result = await rpc_call("tenzro_wormholeChainId", [{"chain": chain}])
+            return f"Wormhole chain id for {chain}:\n{json.dumps(result, indent=2)}"
+        return "Provide a chain name (e.g. 'Wormhole chain id for ethereum')."
+
+    if "vaa" in t or "parse" in t:
+        vaa_id = md.get("vaa_id")
+        if not vaa_id:
+            m = re.search(r"\d+/[0-9a-fA-Fx]+/\d+", text)
+            if m:
+                vaa_id = m.group(0)
+        if vaa_id:
+            result = await rpc_call(
+                "tenzro_wormholeParseVaaId", [{"vaa_id": vaa_id}]
+            )
+            return f"Parsed VAA {vaa_id}:\n{json.dumps(result, indent=2)}"
+        return (
+            "Parse a Wormhole VAA id of the form `<chain>/<emitter>/<sequence>`.\n"
+            "Pass as metadata.vaa_id or in the message text."
+        )
+
+    if "bridge" in t or "transfer" in t or "send" in t:
+        source_chain = md.get("source_chain")
+        dest_chain = md.get("dest_chain")
+        asset = md.get("asset", "TNZO")
+        amount = md.get("amount") or _extract_amount(text)
+        sender = md.get("sender")
+        recipient = md.get("recipient")
+        if source_chain and dest_chain and amount is not None and sender and recipient:
+            result = await rpc_call(
+                "tenzro_wormholeBridge",
+                [{
+                    "source_chain": source_chain,
+                    "dest_chain": dest_chain,
+                    "asset": asset,
+                    "amount": str(amount),
+                    "sender": sender,
+                    "recipient": recipient,
+                }],
+            )
+            return f"Wormhole transfer:\n{json.dumps(result, indent=2)}"
+        return (
+            "To bridge via Wormhole, provide metadata fields:\n"
+            "  source_chain, dest_chain, asset (default TNZO), amount, sender, recipient\n"
+            "Example: bridge 100 TNZO from ethereum to solana"
+        )
+
+    return (
+        "Wormhole cross-chain operations:\n"
+        "  - 'Wormhole chain id for ethereum' (or solana, base, arbitrum, optimism)\n"
+        "  - 'Parse VAA <chain>/<emitter>/<sequence>'\n"
+        "  - 'Bridge <amount> <asset> from <src> to <dst>' (with sender/recipient in metadata)"
+    )
+
+
+# ---------------------------------------------------------------------------
+# CCT (Chainlink Cross-Chain Token)
+# ---------------------------------------------------------------------------
+
+async def handle_cct(text: str, metadata: dict = None) -> str:
+    """TNZO CCT pool registry — Ethereum LockRelease + BurnMint on L2s and Solana."""
+    t = text.lower()
+    md = metadata or {}
+
+    if "list" in t or "all" in t or "pools" in t:
+        result = await rpc_call("tenzro_cctListPools", [{}])
+        pools = result.get("pools", []) if isinstance(result, dict) else []
+        if not pools:
+            return "No CCT pools registered."
+        lines = [f"TNZO CCT pools ({result.get('count', len(pools))}):"]
+        for p in pools:
+            lines.append(
+                f"  - {p.get('chain_id', '?')} | {p.get('pool_type', '?')} | "
+                f"pool: {p.get('pool_address', '?')} | "
+                f"selector: {p.get('chain_selector', '?')}"
+            )
+        return "\n".join(lines)
+
+    chain = md.get("chain")
+    if not chain:
+        for candidate in ("ethereum", "base", "arbitrum", "optimism", "solana"):
+            if candidate in t:
+                chain = candidate
+                break
+    if chain:
+        result = await rpc_call("tenzro_cctGetPool", [{"chain": chain}])
+        return f"TNZO CCT pool on {chain}:\n{json.dumps(result, indent=2)}"
+
+    return (
+        "TNZO CCT (Chainlink Cross-Chain Token) pool registry:\n"
+        "  - 'List CCT pools' — show all registered pools\n"
+        "  - 'Get CCT pool on ethereum' — Ethereum uses LockRelease\n"
+        "  - 'Get CCT pool on base|arbitrum|optimism|solana' — BurnMint pools"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Help
 # ---------------------------------------------------------------------------
 
@@ -1458,5 +1822,9 @@ HANDLERS: dict[str, callable] = {
     "tee": handle_tee,
     "custody": handle_custody,
     "zk": handle_zk,
+    "ap2": handle_ap2,
+    "erc8004": handle_erc8004,
+    "wormhole": handle_wormhole,
+    "cct": handle_cct,
     "help": handle_help,
 }

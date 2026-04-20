@@ -232,19 +232,95 @@ def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
             },
             {
                 "id": "ap2-payments",
-                "name": "AP2 Payments",
+                "name": "AP2 Payments & Mandates",
                 "description": (
-                    "Agent Payments Protocol (AP2) for autonomous financial "
-                    "transactions. Create, authorize, execute, check status, "
-                    "and cancel payments between agents."
+                    "Agent Payments Protocol (AP2) session lifecycle plus "
+                    "Google-spec mandate verification. Create sessions, "
+                    "authorize/execute/cancel payments, verify Intent/Cart/Payment "
+                    "Verifiable Digital Credentials (VDCs), validate Intent+Cart pairs "
+                    "for consistency, and fetch protocol metadata."
                 ),
-                "tags": ["payments", "ap2", "agentic", "settlement"],
+                "tags": [
+                    "payments", "ap2", "agentic", "settlement", "mandates",
+                    "vdc", "intent", "cart", "verifiable-credentials",
+                ],
                 "examples": [
-                    "Create payment for 100 TNZO",
-                    "Authorize spending limit of 1000 TNZO",
-                    "Execute payment pay-id-123",
-                    "Check payment status for pay-id-456",
-                    "Cancel pending payment pay-id-789",
+                    "AP2 protocol info",
+                    "Create AP2 session (metadata.agent_did, provider_did, max_amount)",
+                    "Authorize 100 TNZO on session <id>",
+                    "Execute session <id> (metadata.authorization_id)",
+                    "Cancel session <id>",
+                    "Verify AP2 mandate (metadata.vdc)",
+                    "Validate AP2 intent/cart pair (metadata.intent_vdc, cart_vdc)",
+                ],
+                "inputModes": ["text/plain", "application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "erc8004",
+                "name": "ERC-8004 Trustless Agents",
+                "description": (
+                    "On-chain agent identity and reputation via ERC-8004. "
+                    "Derive deterministic agent IDs, encode registry calldata "
+                    "(register, getAgent, feedback, requestValidation, "
+                    "submitValidation), and decode getAgent returndata for "
+                    "integration with any EVM-compatible registry contract."
+                ),
+                "tags": [
+                    "erc-8004", "agents", "reputation", "identity",
+                    "registry", "calldata",
+                ],
+                "examples": [
+                    "Derive agent id (metadata.owner, metadata.salt)",
+                    "Register agent (metadata.agent_id, registration_data_uri, owner)",
+                    "Get agent <id> (metadata.agent_id)",
+                    "Submit feedback (agent_id, score, feedback_auth_id, feedback_uri)",
+                    "Request validation (agent_id, validator_id, request_uri, data_hash)",
+                    "Submit validation (data_hash, response, response_uri, tag)",
+                ],
+                "inputModes": ["text/plain", "application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "wormhole",
+                "name": "Wormhole Cross-Chain",
+                "description": (
+                    "Wormhole cross-chain messaging and token transfers. "
+                    "Look up numeric chain ids, parse canonical VAA identifiers, "
+                    "and bridge tokens through the Wormhole adapter registered "
+                    "on the node's BridgeRouter."
+                ),
+                "tags": [
+                    "wormhole", "bridge", "cross-chain", "vaa",
+                    "ethereum", "solana", "base", "arbitrum", "optimism",
+                ],
+                "examples": [
+                    "Wormhole chain id for ethereum",
+                    "Wormhole chain id for solana",
+                    "Parse VAA 2/0x00000000000000000000.../12345",
+                    "Bridge 100 TNZO from ethereum to solana (metadata.sender/recipient)",
+                ],
+                "inputModes": ["text/plain", "application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "cct",
+                "name": "TNZO CCT Pool Registry",
+                "description": (
+                    "Chainlink Cross-Chain Token (CCT) pool registry for TNZO. "
+                    "Ethereum uses a LockRelease pool; Base, Arbitrum, Optimism, "
+                    "and Solana use BurnMint pools. Query pool addresses, chain "
+                    "selectors, and per-chain rate-limiter configuration."
+                ),
+                "tags": [
+                    "cct", "chainlink", "cross-chain", "ccip",
+                    "lockrelease", "burnmint", "pool", "rate-limit",
+                ],
+                "examples": [
+                    "List CCT pools",
+                    "Get CCT pool on ethereum",
+                    "Get CCT pool on base",
+                    "Get CCT pool on solana",
                 ],
                 "inputModes": ["text/plain", "application/json"],
                 "outputModes": ["application/json"],

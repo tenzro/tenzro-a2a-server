@@ -64,6 +64,25 @@ def route_message(text: str) -> str:
         return "tee"
 
     # ------------------------------------------------------------------
+    # Tier 2c: AP2 mandate, ERC-8004, Wormhole, CCT compound phrases
+    # ------------------------------------------------------------------
+    if any(k in t for k in [
+        "ap2 mandate", "verify mandate", "validate mandate", "intent vdc", "cart vdc",
+        "payment vdc", "mandate pair", "ap2 session", "ap2 protocol", "ap2 intent",
+        "ap2 cart", "ap2 payment",
+    ]):
+        return "ap2"
+    if any(k in t for k in [
+        "erc-8004", "erc8004", "agent id", "agentid", "trustless agent",
+        "reputation feedback", "request validation", "submit validation",
+    ]):
+        return "erc8004"
+    if any(k in t for k in ["wormhole", "vaa"]):
+        return "wormhole"
+    if any(k in t for k in ["cct pool", "cct pools", "chainlink cross-chain token", "lockrelease pool", "burnmint pool"]):
+        return "cct"
+
+    # ------------------------------------------------------------------
     # Tier 3: Single-keyword domain routes
     # ------------------------------------------------------------------
     if any(k in t for k in ["sign", "encrypt", "decrypt", "keccak"]):
@@ -96,7 +115,9 @@ def route_message(text: str) -> str:
         return "staking"
     if any(k in t for k in ["provider", "serving", "earnings"]):
         return "provider"
-    if any(k in t for k in ["payment", "challenge", "mpp", "x402", "ap2"]):
+    if "ap2" in t:
+        return "ap2"
+    if any(k in t for k in ["payment", "challenge", "mpp", "x402"]):
         return "payment"
     if any(k in t for k in ["verify", "proof", "attestation", "zk"]):
         return "verification"
