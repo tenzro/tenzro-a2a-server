@@ -2,7 +2,7 @@
 
 
 def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
-    """Build the A2A Agent Card with all 19 skills."""
+    """Build the A2A Agent Card with all 23 skills."""
     return {
         "name": "Tenzro Network Agent",
         "description": (
@@ -68,6 +68,35 @@ def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
                 ],
                 "inputModes": ["text/plain"],
                 "outputModes": ["text/plain", "application/json"],
+            },
+            {
+                "id": "cortex",
+                "name": "Cortex Reasoning Workers",
+                "description": (
+                    "Tenzro Cortex reasoning-tier inference via signed receipts. "
+                    "Dispatch requests to local or remote cortex workers with a "
+                    "reasoning budget (Fast/Standard/Deep), MoE (rdt-moe) model "
+                    "family constraints, and per-request max_cost_tnzo cap. "
+                    "Every response carries a verifiable receipt bound to the "
+                    "worker DID, loops_used, tokens_in/out, weights_hash, "
+                    "runtime_hash, and Ed25519 signature. Discover remote "
+                    "workers advertised on the tenzro/cortex gossip topic via "
+                    "tenzro_listRemoteCortexWorkers, and observe live throughput "
+                    "through the shared CortexMetrics exporter on /metrics."
+                ),
+                "tags": [
+                    "cortex", "reasoning", "inference", "ai", "moe",
+                    "receipts", "verifiable", "gossip", "metrics",
+                ],
+                "examples": [
+                    "List remote cortex workers on the network",
+                    "Run Standard-tier reasoning on mythos-3b (metadata.input, max_cost_tnzo)",
+                    "Run Fast-tier cortex inference with budget 1M TNZO",
+                    "Verify a cortex receipt (metadata.receipt)",
+                    "Get cortex worker metrics from /metrics",
+                ],
+                "inputModes": ["text/plain", "application/json"],
+                "outputModes": ["application/json"],
             },
             {
                 "id": "settlement",

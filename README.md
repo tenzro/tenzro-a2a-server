@@ -36,6 +36,8 @@ pip install .
 | A2A Stream | `POST /a2a/stream` | Server-Sent Events streaming |
 | Health | `GET /health` | Health check |
 
+> Note: the verification API at `api.tenzro.network` exposes `/verify/*`, `/health`, `/status`, and `/faucet` — no redundant `/api/` prefix (the subdomain already conveys it).
+
 ## Quick Start
 
 ### Discover capabilities
@@ -81,9 +83,9 @@ curl -X POST https://a2a.tenzro.network/a2a/stream \
   }'
 ```
 
-## Agent Skills (19)
+## Agent Skills (23)
 
-The Tenzro A2A agent exposes 19 skills covering blockchain, AI, identity, payments, and agent orchestration:
+The Tenzro A2A agent exposes 23 skills covering blockchain, AI, identity, payments, and agent orchestration:
 
 ### Core Blockchain
 
@@ -108,10 +110,12 @@ The Tenzro A2A agent exposes 19 skills covering blockchain, AI, identity, paymen
 | Skill | ID | Description |
 |-------|-----|-------------|
 | **AI Inference** | `inference` | Route inference to model providers, settle in TNZO |
+| **Cortex Reasoning Workers** | `cortex` | Tenzro Cortex reasoning-tier inference via signed receipts (Fast/Standard/Deep budgets, MoE rdt-moe family, max_cost_tnzo cap) |
 | **Agent Spawning** | `agent_spawning` | Spawn sub-agents with own DID and wallet (up to 50) |
 | **Swarm Orchestration** | `swarm_orchestration` | Create agent swarms for parallel task execution |
 | **Task Marketplace** | `task_marketplace` | Post/browse tasks with TNZO escrow payment |
 | **Agent Marketplace** | `agent_marketplace` | Publish, discover, rate, and spawn agent templates |
+| **ERC-8004 Trustless Agents** | `erc8004` | On-chain agent identity and reputation via ERC-8004 (derive IDs, encode registry calldata, decode getAgent returndata) |
 
 ### Cross-Chain & Compliance
 
@@ -119,6 +123,8 @@ The Tenzro A2A agent exposes 19 skills covering blockchain, AI, identity, paymen
 |-------|-----|-------------|
 | **Cross-Chain Bridge** | `bridge` | Bridge tokens between Tenzro, Ethereum, Solana, Base via LayerZero/CCIP/deBridge |
 | **Cross-Chain Token** | `crosschain` | ERC-7802 cross-chain token standard, mint/burn bridging |
+| **Wormhole Cross-Chain** | `wormhole` | Wormhole messaging and token transfers (chain id lookup, VAA parsing, BridgeRouter integration) |
+| **TNZO CCT Pool Registry** | `cct` | Chainlink CCT pool registry — LockRelease on Ethereum, BurnMint on Base/Arbitrum/Optimism/Solana |
 | **Compliance & KYC** | `compliance` | ERC-3643 T-REX compliance, identity verification, KYC attestation |
 
 ### Verification & Onboarding
@@ -240,7 +246,7 @@ def tenzro_blockchain(query: str) -> str:
 ```
 Your Agent                    Tenzro Node
     |                              |
-    |-- GET /.well-known/agent.json -->  Agent Card (19 skills)
+    |-- GET /.well-known/agent.json -->  Agent Card (23 skills)
     |                              |
     |-- POST /a2a (tasks/send) ------->  Task Manager
     |                              |     |

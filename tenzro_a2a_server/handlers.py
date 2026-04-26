@@ -149,7 +149,7 @@ async def handle_faucet(text: str, metadata: dict = None) -> str:
     addr = _extract_address(text)
     if not addr:
         return "Provide an address to receive testnet TNZO.\nExample: 'Request faucet tokens for 0xabc...'"
-    result = await api_call("/api/faucet", method="POST", body={"address": addr})
+    result = await api_call("/faucet", method="POST", body={"address": addr})
     if result.get("error"):
         return f"Faucet error: {result['error']}"
     amount = result.get("amount", "100")
@@ -325,7 +325,7 @@ async def handle_payment(text: str, metadata: dict = None) -> str:
         protocol = "mpp"
         if "x402" in t:
             protocol = "x402"
-        result = await rpc_call("tenzro_createPaymentChallenge", [protocol, "/api/resource"])
+        result = await rpc_call("tenzro_createPaymentChallenge", [protocol, "/resource"])
         return f"Payment challenge created ({protocol}):\n{json.dumps(result, indent=2)}"
 
     if "ap2" in t:
@@ -362,11 +362,11 @@ async def handle_payment(text: str, metadata: dict = None) -> str:
             return "Provide a payment ID to execute."
 
     if "mpp" in t:
-        result = await rpc_call("tenzro_createPaymentChallenge", ["mpp", "/api/resource"])
+        result = await rpc_call("tenzro_createPaymentChallenge", ["mpp", "/resource"])
         return f"MPP challenge:\n{json.dumps(result, indent=2)}"
 
     if "x402" in t:
-        result = await rpc_call("tenzro_createPaymentChallenge", ["x402", "/api/resource"])
+        result = await rpc_call("tenzro_createPaymentChallenge", ["x402", "/resource"])
         return f"x402 challenge:\n{json.dumps(result, indent=2)}"
 
     return (
@@ -387,26 +387,43 @@ async def handle_verification(text: str, metadata: dict = None) -> str:
     t = text.lower()
 
     if "tee" in t or "attestation" in t:
-        result = await api_call("/api/verify/tee-attestation", method="POST", body={
-            "provider": "simulation",
-            "quote": "test",
+        provider = (metadata or {}).get("provider") if metadata else None
+        quote = (metadata or {}).get("quote") if metadata else None
+        if not provider or not quote:
+            return (
+                "TEE attestation verification requires a real provider and quote.\n"
+                "Pass via metadata: {\"provider\": \"tdx|sev-snp|nitro|nvidia-gpu\", \"quote\": \"<base64>\"}\n"
+                "Supported providers: tdx, sev-snp, nitro, nvidia-gpu"
+            )
+        result = await api_call("/verify/tee-attestation", method="POST", body={
+            "provider": provider,
+            "quote": quote,
         })
         return f"TEE attestation verification:\n{json.dumps(result, indent=2)}"
 
     if "transaction" in t or "signature" in t:
         tx_hash = _extract_address(text)
         if tx_hash:
-            result = await api_call("/api/verify/transaction", method="POST", body={
+            result = await api_call("/verify/transaction", method="POST", body={
                 "tx_hash": tx_hash,
             })
             return f"Transaction verification:\n{json.dumps(result, indent=2)}"
         return "Provide a transaction hash to verify its signature."
 
     if "zk" in t or "proof" in t:
-        result = await api_call("/api/verify/zk-proof", method="POST", body={
-            "proof_type": "groth16",
-            "proof": "test",
-            "public_inputs": [],
+        md = metadata or {}
+        proof = md.get("proof")
+        public_inputs = md.get("public_inputs")
+        proof_type = md.get("proof_type", "groth16")
+        if not proof or public_inputs is None:
+            return (
+                "ZK proof verification requires a real proof and public inputs.\n"
+                "Pass via metadata: {\"proof_type\": \"groth16|plonk|halo2\", \"proof\": \"<hex>\", \"public_inputs\": [...]}"
+            )
+        result = await api_call("/verify/zk-proof", method="POST", body={
+            "proof_type": proof_type,
+            "proof": proof,
+            "public_inputs": public_inputs,
         })
         return f"ZK proof verification:\n{json.dumps(result, indent=2)}"
 
@@ -1354,7 +1371,7 @@ async def handle_zk(text: str, metadata: dict = None) -> str:
         return f"Available ZK circuits:\n{json.dumps(result, indent=2)}"
 
     if "verify" in t:
-        result = await api_call("/api/verify/zk-proof", method="POST", body={
+        result = await api_call("/verify/zk-proof", method="POST", body={
             "proof_type": "groth16",
             "proof": "test",
             "public_inputs": [],
