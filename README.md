@@ -83,9 +83,9 @@ curl -X POST https://a2a.tenzro.network/a2a/stream \
   }'
 ```
 
-## Agent Skills (23)
+## Agent Skills (30)
 
-The Tenzro A2A agent exposes 23 skills covering blockchain, AI, identity, payments, and agent orchestration:
+The Tenzro A2A agent exposes 30 skills covering blockchain, AI, identity, payments, and agent orchestration:
 
 ### Core Blockchain
 
@@ -111,6 +111,13 @@ The Tenzro A2A agent exposes 23 skills covering blockchain, AI, identity, paymen
 |-------|-----|-------------|
 | **AI Inference** | `inference` | Route inference to model providers, settle in TNZO |
 | **Cortex Reasoning Workers** | `cortex` | Tenzro Cortex reasoning-tier inference via signed receipts (Fast/Standard/Deep budgets, MoE rdt-moe family, max_cost_tnzo cap) |
+| **Forecast** | `forecast` | Timeseries forecasting via Chronos-2, Chronos-Bolt, TimesFM 2.5, Granite-TTM-r2 |
+| **Vision** | `vision` | Image embedding/similarity via CLIP, SigLIP2, DINOv3 |
+| **Text Embedding** | `text_embedding` | Qwen3-Embedding, EmbeddingGemma, BGE-M3, Snowflake Arctic |
+| **Segmentation** | `segmentation` | SAM 3 / 3.1, SAM 2, EdgeSAM, MobileSAM |
+| **Detection** | `detection` | RF-DETR, D-FINE object detection |
+| **Audio** | `audio` | ASR via Moonshine v2, Distil-Whisper, Whisper-v3-turbo, Parakeet-TDT, Canary |
+| **Video** | `video` | Frame-extraction + per-frame embedding scaffolding (wave 1) |
 | **Agent Spawning** | `agent_spawning` | Spawn sub-agents with own DID and wallet (up to 50) |
 | **Swarm Orchestration** | `swarm_orchestration` | Create agent swarms for parallel task execution |
 | **Task Marketplace** | `task_marketplace` | Post/browse tasks with TNZO escrow payment |
@@ -154,6 +161,13 @@ The agent routes messages based on natural language content:
 | `block`, `height`, `transaction` | Block/transaction queries |
 | `identity`, `did`, `register`, `resolve`, `username` | Identity Management |
 | `model`, `inference`, `ai`, `chat` | AI Inference |
+| `forecast`, `timeseries`, `chronos`, `timesfm` | Forecast |
+| `image embed`, `clip`, `siglip`, `dinov3`, `vision` | Vision |
+| `text embed`, `embedding`, `qwen3-embedding`, `bge-m3`, `arctic` | Text Embedding |
+| `segment`, `mask`, `sam` | Segmentation |
+| `detect`, `bounding box`, `rf-detr`, `d-fine` | Detection |
+| `transcribe`, `whisper`, `moonshine`, `parakeet`, `canary`, `asr` | Audio |
+| `video embed` | Video |
 | `payment`, `challenge`, `mpp`, `x402`, `ap2` | Payments |
 | `stake`, `validator`, `provider` | Staking |
 | `token`, `erc20`, `create token`, `wrap` | Token Management |
@@ -246,7 +260,7 @@ def tenzro_blockchain(query: str) -> str:
 ```
 Your Agent                    Tenzro Node
     |                              |
-    |-- GET /.well-known/agent.json -->  Agent Card (23 skills)
+    |-- GET /.well-known/agent.json -->  Agent Card (30 skills)
     |                              |
     |-- POST /a2a (tasks/send) ------->  Task Manager
     |                              |     |

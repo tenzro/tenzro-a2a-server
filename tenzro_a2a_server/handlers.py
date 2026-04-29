@@ -78,16 +78,20 @@ async def handle_wallet(text: str, metadata: dict = None) -> str:
             nonce = int(nonce_hex, 16) if nonce_hex else 0
             chain_id = int(chain_id_hex, 16) if chain_id_hex else 1337
             wei = int(amount * 1e18)
-            tx = {
+            # Hybrid-signed atomic submit. The node identifies the signing
+            # wallet from the ambient DPoP-bound JWT, constructs the
+            # canonical Transaction::hash() preimage including the PQ
+            # public key, signs both Ed25519 and ML-DSA-65 legs, and
+            # submits. Private keys never travel over the wire.
+            result = await rpc_call("tenzro_signAndSendTransaction", {
                 "from": from_addr,
                 "to": to_addr,
-                "value": hex(wei),
-                "nonce": hex(nonce),
-                "chainId": hex(chain_id),
-                "gas": hex(21000),
-                "gasPrice": hex(10**9),
-            }
-            result = await rpc_call("eth_sendRawTransaction", [json.dumps(tx)])
+                "value": wei,
+                "gas_limit": 21000,
+                "gas_price": 10**9,
+                "nonce": nonce,
+                "chain_id": chain_id,
+            })
             return f"Transaction sent.\n  Hash: {result}\n  From: {from_addr}\n  To: {to_addr}\n  Amount: {amount} TNZO"
         return (
             "To send TNZO, provide: from address, to address, and amount.\n"
@@ -412,17 +416,19 @@ async def handle_verification(text: str, metadata: dict = None) -> str:
 
     if "zk" in t or "proof" in t:
         md = metadata or {}
-        proof = md.get("proof")
+        proof = md.get("proof") or md.get("proof_bytes")
         public_inputs = md.get("public_inputs")
-        proof_type = md.get("proof_type", "groth16")
-        if not proof or public_inputs is None:
+        circuit_id = md.get("circuit_id")
+        if not proof or public_inputs is None or not circuit_id:
             return (
-                "ZK proof verification requires a real proof and public inputs.\n"
-                "Pass via metadata: {\"proof_type\": \"groth16|plonk|halo2\", \"proof\": \"<hex>\", \"public_inputs\": [...]}"
+                "ZK proof verification requires a Plonky3 STARK proof, public inputs, and circuit_id.\n"
+                "Pass via metadata: {\"circuit_id\": \"inference|settlement|identity\", "
+                "\"proof_bytes\": \"<hex>\", \"public_inputs\": [\"<hex>\", ...]}\n"
+                "public_inputs entries are 4-byte little-endian KoalaBear field-element chunks."
             )
         result = await api_call("/verify/zk-proof", method="POST", body={
-            "proof_type": proof_type,
-            "proof": proof,
+            "circuit_id": circuit_id,
+            "proof_bytes": proof,
             "public_inputs": public_inputs,
         })
         return f"ZK proof verification:\n{json.dumps(result, indent=2)}"
@@ -1352,39 +1358,31 @@ async def handle_zk(text: str, metadata: dict = None) -> str:
 
     if "create" in t or "prove" in t or "generate proof" in t:
         return (
-            "To create a ZK proof, provide:\n"
-            "  - Circuit name (InferenceVerification, SettlementProof, IdentityProof)\n"
-            "  - Public inputs (JSON array)\n"
-            "  - Private witness (JSON)\n"
-            "Uses Groth16 SNARKs on BN254."
-        )
-
-    if "key" in t or "proving" in t:
-        return (
-            "To generate a proving key, provide:\n"
-            "  - Circuit name\n"
-            "  Requires a completed MPC trusted setup ceremony."
+            "To create a Plonky3 STARK proof, provide:\n"
+            "  - circuit_id: one of \"inference\", \"settlement\", \"identity\"\n"
+            "  - witness fields specific to the circuit (numeric values).\n"
+            "Tenzro uses Plonky3 STARKs over the KoalaBear field — no trusted setup, "
+            "no proving keys, post-quantum-conjectured soundness."
         )
 
     if "circuit" in t or "list" in t:
-        result = await rpc_call("tenzro_listZkCircuits", [])
+        result = await rpc_call("tenzro_listCircuits", [])
         return f"Available ZK circuits:\n{json.dumps(result, indent=2)}"
 
     if "verify" in t:
-        result = await api_call("/verify/zk-proof", method="POST", body={
-            "proof_type": "groth16",
-            "proof": "test",
-            "public_inputs": [],
-        })
-        return f"ZK proof verification:\n{json.dumps(result, indent=2)}"
+        return (
+            "To verify a ZK proof, pass via metadata:\n"
+            "  {\"circuit_id\": \"inference|settlement|identity\", "
+            "\"proof_bytes\": \"<hex>\", \"public_inputs\": [\"<hex>\", ...]}\n"
+            "public_inputs entries are 4-byte little-endian KoalaBear field-element chunks."
+        )
 
     return (
-        "Zero-knowledge proof operations:\n"
+        "Zero-knowledge proof operations (Plonky3 STARKs over KoalaBear):\n"
         "  - 'Create a ZK proof for inference verification'\n"
-        "  - 'Generate a proving key'\n"
         "  - 'List ZK circuits'\n"
         "  - 'Verify a ZK proof'\n"
-        "Circuits: InferenceVerification, SettlementProof, IdentityProof"
+        "Circuits: inference, settlement, identity"
     )
 
 

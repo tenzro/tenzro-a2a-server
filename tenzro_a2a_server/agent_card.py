@@ -2,7 +2,7 @@
 
 
 def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
-    """Build the A2A Agent Card with all 23 skills."""
+    """Build the A2A Agent Card with all 30 skills."""
     return {
         "name": "Tenzro Network Agent",
         "description": (
@@ -459,6 +459,131 @@ def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
                 ],
                 "inputModes": ["text/plain", "application/json"],
                 "outputModes": ["application/json", "text/event-stream"],
+            },
+            {
+                "id": "forecast",
+                "name": "Timeseries Forecasting",
+                "description": (
+                    "Probabilistic timeseries forecasting via Tenzro-served "
+                    "foundation models (Chronos-2, Chronos-Bolt, TimesFM 2.5, "
+                    "Granite-TTM). Returns quantile bands and supports "
+                    "multivariate inputs with covariates."
+                ),
+                "tags": ["timeseries", "forecasting", "ai", "chronos", "timesfm"],
+                "examples": [
+                    "List available forecast models",
+                    "Forecast next 24 steps of [1.0, 1.2, 1.4, ...] with chronos-2",
+                    "Quantile forecast (p10/p50/p90) horizon=12 on chronos-bolt-small",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "vision-embed",
+                "name": "Image Embeddings",
+                "description": (
+                    "Compute high-quality image embeddings via Tenzro-served "
+                    "vision encoders (DINOv3, SigLIP2, CLIP). Supports "
+                    "zero-shot classification by cosine similarity against "
+                    "natural-language label prompts."
+                ),
+                "tags": ["vision", "embedding", "dinov3", "siglip2", "clip", "ai"],
+                "examples": [
+                    "List available vision models",
+                    "Embed a base64 image with dinov3-vitb16",
+                    "Zero-shot classify image against [cat, dog, lion]",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "text-embed",
+                "name": "Text Embeddings",
+                "description": (
+                    "Compute dense text embeddings via Tenzro-served "
+                    "encoders (Qwen3-Embedding 0.6B/4B/8B, EmbeddingGemma-300M, "
+                    "BGE-M3). Supports Matryoshka truncation (e.g. 512/256/128 "
+                    "dims for EmbeddingGemma) and batch inputs."
+                ),
+                "tags": ["text", "embedding", "qwen3", "embeddinggemma", "bge", "ai"],
+                "examples": [
+                    "List available text embedding models",
+                    "Embed [\"hello\", \"world\"] with qwen3-embedding-0.6b",
+                    "Embed with embeddinggemma-300m at requested_dim=256",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "segmentation",
+                "name": "Image Segmentation",
+                "description": (
+                    "Promptable image segmentation via Tenzro-served encoders "
+                    "(SAM 3, SAM 2, EdgeSAM, MobileSAM). Accepts point and "
+                    "box prompts, returns per-prompt mask geometry and scores."
+                ),
+                "tags": ["vision", "segmentation", "sam", "edgesam", "ai"],
+                "examples": [
+                    "List available segmentation models",
+                    "Segment image with SAM 3 given point prompts",
+                    "Segment image with EdgeSAM given a box prompt",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "detection",
+                "name": "Object Detection",
+                "description": (
+                    "Open-vocabulary and closed-set object detection via "
+                    "Tenzro-served encoders (RF-DETR nano/small/medium/base/"
+                    "large/2x-large, D-FINE). Returns bbox + label + score "
+                    "lists with optional score threshold."
+                ),
+                "tags": ["vision", "detection", "rf-detr", "d-fine", "ai"],
+                "examples": [
+                    "List available detection models",
+                    "Detect objects in image with rf-detr-base, threshold 0.5",
+                    "Detect objects with d-fine-l, threshold 0.3",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "audio-transcribe",
+                "name": "Audio Transcription (ASR)",
+                "description": (
+                    "Speech-to-text transcription via Tenzro-served ASR models "
+                    "(Moonshine v2 tiny/base, Distil-Whisper small/medium/large, "
+                    "Whisper-large-v3-turbo, Parakeet-TDT-0.6B-v3, Canary-1B-Flash). "
+                    "Supports language hints and word/segment-level timestamps."
+                ),
+                "tags": ["audio", "asr", "speech-to-text", "whisper", "ai"],
+                "examples": [
+                    "List available audio models",
+                    "Transcribe a base64 WAV with whisper-large-v3-turbo",
+                    "Transcribe Spanish audio with canary-1b-flash with timestamps",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "video-embed",
+                "name": "Video Embeddings",
+                "description": (
+                    "Video embedding scaffolding via Tenzro-served encoders. "
+                    "Wave 1 ships the runtime + RPC surface; the catalog is "
+                    "intentionally empty until a permissive ONNX-shippable "
+                    "video encoder lands. Until then, agents fall back to "
+                    "pooling vision-encoder embeddings over sampled frames."
+                ),
+                "tags": ["video", "embedding", "vjepa", "videomae", "ai"],
+                "examples": [
+                    "List available video models",
+                    "Embed a base64 video clip with frame_stride=30",
+                ],
+                "inputModes": ["application/json"],
+                "outputModes": ["application/json"],
             },
         ],
         "defaultInputModes": ["text/plain", "application/json"],

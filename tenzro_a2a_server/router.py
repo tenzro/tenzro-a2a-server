@@ -58,7 +58,7 @@ def route_message(text: str) -> str:
         return "crypto"
     if any(k in t for k in ["mpc wallet", "keystore", "session key", "spending limit", "custody", "key share", "key rotation"]):
         return "custody"
-    if any(k in t for k in ["zk proof", "zero knowledge", "proving key", "zk circuit", "groth16"]):
+    if any(k in t for k in ["zk proof", "zero knowledge", "zk circuit", "plonky3", "stark"]):
         return "zk"
     if any(k in t for k in ["tee enclave", "tee attestation", "tee provider", "seal data", "unseal data", "trusted execution"]):
         return "tee"
