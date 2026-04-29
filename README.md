@@ -83,9 +83,9 @@ curl -X POST https://a2a.tenzro.network/a2a/stream \
   }'
 ```
 
-## Agent Skills (30)
+## Agent Skills (31)
 
-The Tenzro A2A agent exposes 30 skills covering blockchain, AI, identity, payments, and agent orchestration:
+The Tenzro A2A agent exposes 31 skills covering blockchain, AI, identity, payments, and agent orchestration:
 
 ### Core Blockchain
 
@@ -140,6 +140,7 @@ The Tenzro A2A agent exposes 30 skills covering blockchain, AI, identity, paymen
 |-------|-----|-------------|
 | **Proof Verification** | `verification` | Verify ZK proofs, TEE attestations, transaction signatures |
 | **Event Streaming** | `events` | Subscribe to blockchain events via WebSocket, webhooks, gRPC |
+| **Authentication (OAuth 2.1 + DPoP)** | `auth` | Onboard humans / delegated agents / autonomous agents (RFC 6749 + RFC 9449), refresh access tokens, link an existing wallet to an auth session, revoke JWTs/DIDs. Pass `dpop_jkt` (RFC 7638 thumbprint) to bind issued tokens to a holder key. |
 | **Join as MicroNode** | `join` | Zero-install network participation with auto-provisioned DID + wallet |
 
 ## A2A Methods

@@ -15,6 +15,14 @@ def route_message(text: str) -> str:
     # ------------------------------------------------------------------
     # Tier 1: Multi-word compound phrases (highest priority)
     # ------------------------------------------------------------------
+    if any(k in t for k in [
+        "refresh token", "refresh access token", "refresh my token",
+        "link wallet for auth", "link my wallet", "link wallet to auth",
+        "onboard human", "onboard delegated", "onboard autonomous",
+        "delegated agent", "autonomous agent",
+        "dpop", "access token", "auth token",
+    ]):
+        return "auth"
     if any(k in t for k in ["join", "micronode", "onboard", "participate"]):
         return "join"
     if (

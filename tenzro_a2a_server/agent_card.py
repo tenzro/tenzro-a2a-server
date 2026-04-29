@@ -2,7 +2,7 @@
 
 
 def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
-    """Build the A2A Agent Card with all 30 skills."""
+    """Build the A2A Agent Card with all 31 skills."""
     return {
         "name": "Tenzro Network Agent",
         "description": (
@@ -350,6 +350,32 @@ def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
                     "Get CCT pool on ethereum",
                     "Get CCT pool on base",
                     "Get CCT pool on solana",
+                ],
+                "inputModes": ["text/plain", "application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
+                "id": "auth",
+                "name": "Authentication (OAuth 2.1 + DPoP)",
+                "description": (
+                    "OAuth 2.1 + DPoP auth flows: onboard humans and agents, "
+                    "refresh expired access tokens, and link an existing MPC "
+                    "wallet to a new auth session. Issues HS256 access tokens "
+                    "(1h TTL) and opaque UUID refresh tokens (30-day TTL). "
+                    "Pass metadata.dpop_jkt -- the RFC 7638 SHA-256 thumbprint "
+                    "of a client-held P-256/Ed25519 public key -- to bind the "
+                    "issued access token to a key the client controls."
+                ),
+                "tags": [
+                    "auth", "oauth", "dpop", "onboarding", "refresh-token",
+                    "wallet", "rfc-9449", "rfc-7638",
+                ],
+                "examples": [
+                    "Onboard human Alice",
+                    "Onboard delegated agent (metadata.controller_did, capabilities, delegation_scope)",
+                    "Onboard autonomous agent (metadata.bond_funding_address)",
+                    "Refresh my access token (metadata.refresh_token, optional dpop_jkt)",
+                    "Link wallet for auth (metadata.wallet_id)",
                 ],
                 "inputModes": ["text/plain", "application/json"],
                 "outputModes": ["application/json"],

@@ -1754,6 +1754,115 @@ async def handle_cct(text: str, metadata: dict = None) -> str:
 # Help
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Authentication (OAuth 2.1 + DPoP onboarding, refresh, link wallet)
+# ---------------------------------------------------------------------------
+
+async def handle_auth(text: str, metadata: dict = None) -> str:
+    """OAuth 2.1 + DPoP auth flows: onboard human/agent, refresh access tokens,
+    link an existing MPC wallet to a new auth session.
+
+    Token shape: HS256 access tokens (1h TTL) + opaque UUID refresh tokens
+    (30-day TTL). DPoP binding via RFC 7638 SHA-256 thumbprint of the
+    client-held P-256/Ed25519 public key — pass the thumbprint as
+    `metadata.dpop_jkt` to bind the token to a key the client controls.
+    """
+    t = text.lower()
+    md = metadata or {}
+    dpop_jkt = md.get("dpop_jkt", "")
+    ttl_secs = md.get("ttl_secs")
+
+    if "refresh" in t:
+        token = md.get("refresh_token")
+        if not token:
+            return (
+                "To refresh, supply metadata.refresh_token (and optionally "
+                "metadata.dpop_jkt to bind the new access token).\n"
+                "Example: 'Refresh my access token' with "
+                "metadata={refresh_token: '...', dpop_jkt: '...'}"
+            )
+        params = {"refresh_token": token}
+        if dpop_jkt:
+            params["dpop_jkt"] = dpop_jkt
+        result = await rpc_call("tenzro_refreshToken", [params])
+        return json.dumps(result, indent=2)
+
+    if "link" in t and "wallet" in t:
+        wallet_id = md.get("wallet_id")
+        if not wallet_id:
+            return (
+                "To link a wallet for auth, supply metadata.wallet_id.\n"
+                "Optional: metadata.dpop_jkt, metadata.display_name, "
+                "metadata.ttl_secs."
+            )
+        params = {"wallet_id": wallet_id}
+        if dpop_jkt:
+            params["dpop_jkt"] = dpop_jkt
+        if md.get("display_name"):
+            params["display_name"] = md["display_name"]
+        if ttl_secs:
+            params["ttl_secs"] = ttl_secs
+        result = await rpc_call("tenzro_linkWalletForAuth", [params])
+        return json.dumps(result, indent=2)
+
+    if "human" in t or ("onboard" in t and "agent" not in t):
+        display_name = md.get("display_name") or _extract_name(text)
+        params = {"display_name": display_name}
+        if dpop_jkt:
+            params["dpop_jkt"] = dpop_jkt
+        if ttl_secs:
+            params["ttl_secs"] = ttl_secs
+        result = await rpc_call("tenzro_onboardHuman", [params])
+        return json.dumps(result, indent=2)
+
+    if "delegated" in t or ("agent" in t and "controller" in t):
+        controller_did = md.get("controller_did")
+        capabilities = md.get("capabilities", [])
+        delegation_scope = md.get("delegation_scope", {})
+        if not controller_did:
+            return (
+                "To onboard a delegated agent, supply metadata.controller_did "
+                "(the human DID granting authority), plus optional "
+                "metadata.capabilities and metadata.delegation_scope."
+            )
+        params = {
+            "controller_did": controller_did,
+            "capabilities": capabilities,
+            "delegation_scope": delegation_scope,
+        }
+        if dpop_jkt:
+            params["dpop_jkt"] = dpop_jkt
+        result = await rpc_call("tenzro_onboardDelegatedAgent", [params])
+        return json.dumps(result, indent=2)
+
+    if "autonomous" in t or ("agent" in t and "bond" in t):
+        bond_funding_address = md.get("bond_funding_address")
+        if not bond_funding_address:
+            return (
+                "To onboard an autonomous agent, supply "
+                "metadata.bond_funding_address (the funded wallet that pays "
+                "the autonomy bond)."
+            )
+        params = {"bond_funding_address": bond_funding_address}
+        if dpop_jkt:
+            params["dpop_jkt"] = dpop_jkt
+        result = await rpc_call("tenzro_onboardAutonomousAgent", [params])
+        return json.dumps(result, indent=2)
+
+    return (
+        "Auth operations:\n"
+        "  - 'Onboard human Alice'                    (tenzro_onboardHuman)\n"
+        "  - 'Onboard delegated agent'                (metadata.controller_did, capabilities, delegation_scope)\n"
+        "  - 'Onboard autonomous agent'               (metadata.bond_funding_address)\n"
+        "  - 'Refresh my access token'                (metadata.refresh_token, optional dpop_jkt)\n"
+        "  - 'Link wallet for auth'                   (metadata.wallet_id, optional dpop_jkt/display_name/ttl_secs)\n"
+        "\n"
+        "All flows accept metadata.dpop_jkt -- RFC 7638 SHA-256 thumbprint\n"
+        "of a client-held P-256/Ed25519 public key. Pass it to bind the\n"
+        "issued access token to a key the client controls."
+    )
+
+
 async def handle_help(text: str, metadata: dict = None) -> str:
     return (
         "Tenzro Network Agent -- 23 skills available:\n"
@@ -1790,6 +1899,7 @@ async def handle_help(text: str, metadata: dict = None) -> str:
         "\n"
         "  Infrastructure:\n"
         "    join    - Join as MicroNode (zero-install onboarding)\n"
+        "    auth    - OAuth 2.1 + DPoP onboard/refresh/link-wallet\n"
         "    events  - WebSocket/webhook event streaming\n"
         "\n"
         "Try: 'Check my TNZO balance for 0xabc...'\n"
@@ -1841,5 +1951,6 @@ HANDLERS: dict[str, callable] = {
     "erc8004": handle_erc8004,
     "wormhole": handle_wormhole,
     "cct": handle_cct,
+    "auth": handle_auth,
     "help": handle_help,
 }
