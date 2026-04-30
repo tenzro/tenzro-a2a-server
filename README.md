@@ -83,6 +83,33 @@ curl -X POST https://a2a.tenzro.network/a2a/stream \
   }'
 ```
 
+### Catch-up sync (block range)
+
+A lagging client can ask the agent to batch-fetch historical blocks. The
+handler dispatches to `tenzro_getBlockRange` and reports the
+`nextHeight` / `moreAvailable` cursor so callers can paginate past pruning
+gaps:
+
+```bash
+curl -X POST https://a2a.tenzro.network/a2a \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "method": "tasks/send",
+    "params": {
+      "message": {
+        "role": "user",
+        "parts": [{ "type": "text", "text": "block range 1000 1063" }]
+      }
+    },
+    "id": 1
+  }'
+```
+
+`status`/`health` queries also surface the live sync gap by comparing the
+local tip against peer-reported network tips (gossiped on
+`tenzro/status/1.0.0`).
+
 ## Agent Skills (31)
 
 The Tenzro A2A agent exposes 31 skills covering blockchain, AI, identity, payments, and agent orchestration:
@@ -159,7 +186,7 @@ The agent routes messages based on natural language content:
 | Keywords | Skill |
 |----------|-------|
 | `balance`, `wallet`, `send`, `transfer` | Wallet Operations |
-| `block`, `height`, `transaction` | Block/transaction queries |
+| `block`, `height`, `transaction`, `block range`, `sync from`, `catch up` | Block/transaction queries (single block, transaction lookup, batch range for catch-up sync) |
 | `identity`, `did`, `register`, `resolve`, `username` | Identity Management |
 | `model`, `inference`, `ai`, `chat` | AI Inference |
 | `forecast`, `timeseries`, `chronos`, `timesfm` | Forecast |

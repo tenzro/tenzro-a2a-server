@@ -129,7 +129,7 @@ def route_message(text: str) -> str:
         return "payment"
     if any(k in t for k in ["verify", "proof", "attestation", "zk"]):
         return "verification"
-    if any(k in t for k in ["block", "height", "transaction"]):
+    if any(k in t for k in ["block", "height", "transaction", "block range", "sync from", "catch up", "catch-up"]):
         return "block"
     if any(k in t for k in ["canton", "daml"]):
         return "canton"

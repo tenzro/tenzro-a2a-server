@@ -122,6 +122,31 @@ async def handle_block(text: str, metadata: dict = None) -> str:
             return json.dumps(result, indent=2)
         return "Provide a transaction hash (0x...) to look up."
 
+    # Batch-fetch block range for catch-up sync.
+    # Triggered by "range", "sync from", "catch up", or any message containing
+    # two numbers (interpreted as start..end heights).
+    if any(k in t for k in ["range", "catch up", "catch-up", "sync from", "block range"]):
+        nums = re.findall(r"\d+", text)
+        if len(nums) >= 2:
+            start = int(nums[0])
+            end = int(nums[1])
+            max_results = int(nums[2]) if len(nums) >= 3 else 64
+            params = {"startHeight": start, "endHeight": end, "maxResults": max_results}
+            result = await rpc_call("tenzro_getBlockRange", params)
+            blocks = result.get("blocks", []) if isinstance(result, dict) else []
+            return (
+                f"Block range {start}..{end} (max {max_results}):\n"
+                f"  Returned: {len(blocks)} blocks\n"
+                f"  nextHeight: {result.get('nextHeight')}\n"
+                f"  moreAvailable: {result.get('moreAvailable')}\n"
+                f"  localTip: {result.get('localTip')}"
+            )
+        return (
+            "Provide start and end heights to fetch a block range.\n"
+            "Example: 'block range 1000 1063' or 'sync from 0 to 255'.\n"
+            "Returns up to 256 blocks per call with nextHeight + moreAvailable for pagination."
+        )
+
     result = await rpc_call("eth_blockNumber", [])
     height = int(result, 16) if result else 0
     return f"Current block height: {height}"
@@ -129,14 +154,24 @@ async def handle_block(text: str, metadata: dict = None) -> str:
 
 async def handle_status(text: str, metadata: dict = None) -> str:
     result = await rpc_call("tenzro_nodeInfo", [])
-    return (
-        f"Node Status:\n"
-        f"  Role: {result.get('role', 'unknown')}\n"
-        f"  State: {result.get('state', 'unknown')}\n"
-        f"  Peers: {result.get('peer_count', 0)}\n"
-        f"  Block height: {result.get('block_height', 0)}\n"
-        f"  Uptime: {result.get('uptime_secs', 0)}s"
-    )
+    lines = [
+        "Node Status:",
+        f"  Role: {result.get('role', 'unknown')}",
+        f"  State: {result.get('state', 'unknown')}",
+        f"  Peers: {result.get('peer_count', 0)}",
+        f"  Block height: {result.get('block_height', 0)}",
+        f"  Uptime: {result.get('uptime_secs', 0)}s",
+    ]
+    # Surface sync gap from peer-reported network tip.
+    sync = await rpc_call("tenzro_syncing", [])
+    if isinstance(sync, dict) and sync.get("syncing"):
+        current = sync.get("current_block", 0)
+        highest = sync.get("highest_block", 0)
+        gap = max(0, int(highest) - int(current))
+        lines.append(f"  Syncing: yes (behind by {gap} blocks; network tip {highest})")
+    else:
+        lines.append("  Syncing: no (caught up)")
+    return "\n".join(lines)
 
 
 async def handle_network(text: str, metadata: dict = None) -> str:
