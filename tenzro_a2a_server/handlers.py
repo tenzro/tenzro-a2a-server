@@ -360,6 +360,10 @@ async def handle_payment(text: str, metadata: dict = None) -> str:
         result = await rpc_call("tenzro_paymentGatewayInfo", [])
         return f"Payment gateway info:\n{json.dumps(result, indent=2)}"
 
+    if "scheme" in t and "x402" in t:
+        result = await rpc_call("tenzro_listX402Schemes", [])
+        return f"x402 scheme registry:\n{json.dumps(result, indent=2)}"
+
     if "challenge" in t:
         protocol = "mpp"
         if "x402" in t:
@@ -412,6 +416,7 @@ async def handle_payment(text: str, metadata: dict = None) -> str:
         "Payment operations:\n"
         "  - 'Create MPP payment challenge'\n"
         "  - 'Create x402 payment challenge'\n"
+        "  - 'List x402 schemes'\n"
         "  - 'List payment sessions'\n"
         "  - 'AP2 create payment for 100 TNZO'\n"
         "  - 'Payment gateway info'"
@@ -1451,15 +1456,25 @@ async def handle_ap2(text: str, metadata: dict = None) -> str:
         md = metadata or {}
         intent_vdc = md.get("intent_vdc") or md.get("intent")
         cart_vdc = md.get("cart_vdc") or md.get("cart")
+        # `metadata.enforce_delegation` (bool) opts into the TDIP gate:
+        # AP2 validates the cart, then `IdentityRegistry::enforce_operation`
+        # checks the agent's DelegationScope against the cart total.
+        enforce_delegation = bool(md.get("enforce_delegation", False))
         if intent_vdc is None or cart_vdc is None:
             return (
                 "To validate an AP2 mandate pair, send both VDCs as "
                 "`metadata.intent_vdc` and `metadata.cart_vdc`.\n"
+                "Set `metadata.enforce_delegation = true` to additionally "
+                "enforce the agent's TDIP DelegationScope against the cart total.\n"
                 "The node verifies each VDC and cross-checks intent↔cart consistency."
             )
         result = await rpc_call(
             "tenzro_ap2ValidateMandatePair",
-            [{"intent_vdc": intent_vdc, "cart_vdc": cart_vdc}],
+            [{
+                "intent_vdc": intent_vdc,
+                "cart_vdc": cart_vdc,
+                "enforce_delegation": enforce_delegation,
+            }],
         )
         return f"AP2 Intent/Cart pair validation:\n{json.dumps(result, indent=2)}"
 
@@ -1884,6 +1899,53 @@ async def handle_auth(text: str, metadata: dict = None) -> str:
         result = await rpc_call("tenzro_onboardAutonomousAgent", [params])
         return json.dumps(result, indent=2)
 
+    if "exchange" in t:
+        # RFC 8693 OAuth 2.0 Token Exchange — mint a narrower child JWT
+        # bound to a different DPoP key with a strict subset of the
+        # parent's RAR + AAP capabilities.
+        subject_token = md.get("subject_token")
+        child_bearer_did = md.get("child_bearer_did")
+        child_dpop_jkt = md.get("child_dpop_jkt")
+        if not (subject_token and child_bearer_did and child_dpop_jkt):
+            return (
+                "To exchange a token, supply metadata.subject_token (parent "
+                "JWT), metadata.child_bearer_did (DID for the child token's "
+                "sub), metadata.child_dpop_jkt (RFC 7638 thumbprint the "
+                "child binds to). Optional: metadata.requested_rar (RFC 9396 "
+                "scope envelope), metadata.requested_aap_capabilities (AAP "
+                "capability list), metadata.requested_ttl_secs."
+            )
+        params = {
+            "subject_token": subject_token,
+            "child_bearer_did": child_bearer_did,
+            "child_dpop_jkt": child_dpop_jkt,
+            "requested_rar": md.get("requested_rar", {}),
+            "requested_aap_capabilities": md.get(
+                "requested_aap_capabilities", []
+            ),
+        }
+        if md.get("requested_ttl_secs"):
+            params["requested_ttl_secs"] = md["requested_ttl_secs"]
+        result = await rpc_call("tenzro_exchangeToken", [params])
+        return json.dumps(result, indent=2)
+
+    if "introspect" in t:
+        # RFC 7662 OAuth 2.0 Token Introspection.
+        token = md.get("token")
+        if not token:
+            return (
+                "To introspect a token, supply metadata.token (the JWT to "
+                "validate). Returns the full claim set on success or "
+                '{"active": false} per RFC 7662 §2.2 if inactive.'
+            )
+        result = await rpc_call("tenzro_introspectToken", [{"token": token}])
+        return json.dumps(result, indent=2)
+
+    if "discovery" in t or "well-known" in t or "metadata" in t:
+        # RFC 8414 OAuth Authorization Server Metadata.
+        result = await rpc_call("tenzro_oauthDiscovery", [])
+        return json.dumps(result, indent=2)
+
     return (
         "Auth operations:\n"
         "  - 'Onboard human Alice'                    (tenzro_onboardHuman)\n"
@@ -1891,6 +1953,9 @@ async def handle_auth(text: str, metadata: dict = None) -> str:
         "  - 'Onboard autonomous agent'               (metadata.bond_funding_address)\n"
         "  - 'Refresh my access token'                (metadata.refresh_token, optional dpop_jkt)\n"
         "  - 'Link wallet for auth'                   (metadata.wallet_id, optional dpop_jkt/display_name/ttl_secs)\n"
+        "  - 'Exchange token'                         (metadata.subject_token, child_bearer_did, child_dpop_jkt, requested_rar, requested_aap_capabilities) -- RFC 8693\n"
+        "  - 'Introspect token'                       (metadata.token) -- RFC 7662\n"
+        "  - 'Discovery' or 'well-known metadata'     -- RFC 8414 AS metadata\n"
         "\n"
         "All flows accept metadata.dpop_jkt -- RFC 7638 SHA-256 thumbprint\n"
         "of a client-held P-256/Ed25519 public key. Pass it to bind the\n"

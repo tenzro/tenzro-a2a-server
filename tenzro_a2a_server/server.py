@@ -19,6 +19,12 @@ from .agent_card import build_agent_card
 from .task_manager import TaskManager
 from .router import route_message
 from .handlers import HANDLERS
+from . import x402_extension as x402
+from .x402_extension import (
+    PaymentStatus,
+    UnimplementedSchemeVerifier,
+    VerifyFailure,
+)
 
 app = FastAPI(
     title="Tenzro A2A Server",
@@ -34,6 +40,12 @@ app.add_middleware(
 )
 
 task_manager = TaskManager()
+
+# x402 payment verifier — slice (a) ships the structural verifier that
+# rejects every payload with `payment-rejected`. Slice (c) replaces this
+# with a registry of concrete scheme backends (exact-eip3009, exact-permit2,
+# exact-erc7710).
+payment_verifier = UnimplementedSchemeVerifier()
 
 BASE_URL = os.environ.get("TENZRO_A2A_BASE_URL", "https://a2a.tenzro.network")
 
@@ -117,9 +129,21 @@ async def a2a_rpc(request: Request):
 
 
 async def _handle_task_send(params: dict, req_id) -> JSONResponse:
-    """Process a tasks/send or message/send request."""
-    message = params.get("message", {})
-    metadata = params.get("metadata", {})
+    """Process a tasks/send or message/send request.
+
+    Continuation contract (x402 hold-and-resume): when the inbound message
+    references an existing task (`message.taskId`) and that task is held in
+    `input-required` with `x402.payment.required`, the inbound metadata must
+    carry `x402.payment.payload`. The dispatcher routes the payload through
+    `payment_verifier`; on success the task resumes to `working` and the
+    handler runs, on failure the task transitions to `failed` with
+    `x402.payment.status = "payment-rejected"`.
+    """
+    message = params.get("message", {}) or {}
+    # Inbound message metadata may carry an `x402.payment.payload` for a
+    # task held in `input-required`. Top-level `params.metadata` is also
+    # accepted (legacy callers).
+    inbound_metadata = message.get("metadata") or params.get("metadata") or {}
 
     # Extract text from message parts
     text = ""
@@ -127,15 +151,31 @@ async def _handle_task_send(params: dict, req_id) -> JSONResponse:
         if part.get("type") == "text":
             text += part.get("text", "")
 
+    # Continuation: lookup existing task by taskId on the inbound message.
+    inbound_task_id = message.get("taskId")
+    if inbound_task_id:
+        existing = task_manager.get_task(inbound_task_id)
+        if existing is not None and existing.get("status", {}).get("state") == "input-required":
+            requirements = x402.get_payment_required(existing.get("metadata") or {})
+            if requirements is not None:
+                return await _resume_x402_task(
+                    inbound_task_id,
+                    existing,
+                    requirements,
+                    inbound_metadata,
+                    text,
+                    req_id,
+                )
+
     # Create task and transition to working
-    task = task_manager.create_task(message, metadata=metadata)
+    task = task_manager.create_task(message, metadata=inbound_metadata)
     task_manager.update_state(task["id"], "working")
 
     # Route and handle
     try:
         skill = route_message(text)
         handler = HANDLERS.get(skill, HANDLERS["help"])
-        response_text = await handler(text, metadata)
+        response_text = await handler(text, inbound_metadata)
     except Exception as e:
         response_text = f"Error processing request: {e}"
 
@@ -149,6 +189,77 @@ async def _handle_task_send(params: dict, req_id) -> JSONResponse:
     return JSONResponse({
         "jsonrpc": "2.0",
         "result": task_manager.get_task(task["id"]),
+        "id": req_id,
+    })
+
+
+async def _resume_x402_task(
+    task_id: str,
+    existing: dict,
+    requirements: dict,
+    inbound_metadata: dict,
+    text: str,
+    req_id,
+) -> JSONResponse:
+    """Resume a task held in `input-required` with `x402.payment.required`.
+
+    Mirrors the Rust hold-and-resume dispatcher. Always settles into a
+    terminal task state (`completed` on success, `failed` on payment
+    failure).
+    """
+    payload = x402.get_payment_payload(inbound_metadata)
+    if payload is None:
+        return JSONResponse({
+            "jsonrpc": "2.0",
+            "error": {
+                "code": -32004,
+                "message": "task is awaiting x402.payment.payload in message.metadata",
+            },
+            "id": req_id,
+        })
+
+    # Mutate the held task's metadata in place — TaskManager hands out the
+    # same dict reference via get_task(), and update_state() rewrites the
+    # `status` block on transition.
+    task_metadata = existing.setdefault("metadata", {})
+
+    try:
+        receipts = payment_verifier.verify_and_settle(task_id, requirements, payload)
+    except VerifyFailure as failure:
+        x402.submit_x402(task_metadata, payload)
+        x402.fail_x402(task_metadata, failure.terminal_status())
+        failure_msg = {
+            "role": "agent",
+            "parts": [{"type": "text", "text": f"payment failed: {failure.message()}"}],
+        }
+        task_manager.update_state(task_id, "failed", failure_msg)
+        return JSONResponse({
+            "jsonrpc": "2.0",
+            "result": task_manager.get_task(task_id),
+            "id": req_id,
+        })
+
+    # Success path: record submission + receipts, resume task, run handler.
+    x402.submit_x402(task_metadata, payload)
+    x402.complete_x402(task_metadata, receipts)
+    task_manager.update_state(task_id, "working")
+
+    try:
+        skill = route_message(text)
+        handler = HANDLERS.get(skill, HANDLERS["help"])
+        response_text = await handler(text, task_metadata)
+    except Exception as e:
+        response_text = f"Error processing request: {e}"
+
+    agent_message = {
+        "role": "agent",
+        "parts": [{"type": "text", "text": response_text}],
+    }
+    task_manager.update_state(task_id, "completed", agent_message)
+
+    return JSONResponse({
+        "jsonrpc": "2.0",
+        "result": task_manager.get_task(task_id),
         "id": req_id,
     })
 
