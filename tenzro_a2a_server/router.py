@@ -42,6 +42,12 @@ def route_message(text: str) -> str:
         return "agent_spawning"
     if any(k in t for k in ["swarm", "orchestrat"]):
         return "swarm_orchestration"
+    if any(k in t for k in [
+        "kill-switch", "kill switch", "killswitch",
+        "pause agent", "quarantine agent", "terminate agent",
+        "agent lifecycle", "lifecycle receipt",
+    ]):
+        return "lifecycle"
 
     # ------------------------------------------------------------------
     # Tier 2: Token sub-commands
@@ -129,7 +135,12 @@ def route_message(text: str) -> str:
         return "payment"
     if any(k in t for k in ["verify", "proof", "attestation", "zk"]):
         return "verification"
-    if any(k in t for k in ["block", "height", "transaction", "block range", "sync from", "catch up", "catch-up"]):
+    if any(k in t for k in [
+        "block", "height", "transaction", "block range", "sync from",
+        "catch up", "catch-up",
+        "fee market", "gas price", "gasprice", "priority tip",
+        "fee history", "1559", "eip-1559", "eip1559",
+    ]):
         return "block"
     if any(k in t for k in ["canton", "daml"]):
         return "canton"
