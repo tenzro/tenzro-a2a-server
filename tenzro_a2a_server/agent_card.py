@@ -1481,7 +1481,10 @@ def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
                     "layer-wise cluster placement for a model across candidate "
                     "members — the fit decision and, when a cluster forms, the "
                     "VRAM-weighted per-member layer assignment ordered to "
-                    "minimize pipeline transfer cost."
+                    "minimize pipeline transfer cost. Or preview placement for a "
+                    "downloaded model from the node's live view, deriving the "
+                    "model shape from the GGUF header and discovering LAN "
+                    "members automatically — no manual dimensions required."
                 ),
                 "tags": [
                     "discovery", "mdns", "lan-cluster", "reachability",
@@ -1492,6 +1495,7 @@ def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
                     "What is this node's connectivity tier?",
                     "Show this node's hardware profile",
                     "Plan a LAN cluster for a 32-layer model across these members",
+                    "Preview the cluster placement for gemma3-large",
                 ],
                 "inputModes": ["text/plain", "application/json"],
                 "outputModes": ["application/json"],

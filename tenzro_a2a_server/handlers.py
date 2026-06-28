@@ -3111,6 +3111,14 @@ async def handle_discovery(text: str, metadata: dict = None) -> str:
     t = text.lower()
     md = metadata or {}
 
+    if "preview" in t and md.get("model_id"):
+        result = await rpc_call("tenzro_clusterPreview", {
+            "model_id": md["model_id"],
+            "user_forced": md.get("user_forced", False),
+            "force_single": md.get("force_single", False),
+        })
+        return f"Cluster preview:\n{json.dumps(result, indent=2)}"
+
     if "cluster" in t and md.get("model") and md.get("members"):
         result = await rpc_call("tenzro_clusterPlan", {
             "model": md["model"],
@@ -3136,6 +3144,7 @@ async def handle_discovery(text: str, metadata: dict = None) -> str:
         "  - 'Local peers'\n"
         "  - 'Node reachability'\n"
         "  - 'Node hardware profile'\n"
+        "  - 'Cluster preview <model_id>' (metadata: model_id, user_forced?, force_single? — live node view, derives shape from GGUF + discovers members)\n"
         "  - 'Cluster plan' (metadata: model {layers, hidden_dim, total_vram_gb}, members, user_forced?)"
     )
 
