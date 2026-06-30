@@ -1123,6 +1123,32 @@ def build_agent_card(base_url: str = "https://a2a.tenzro.network") -> dict:
                 "outputModes": ["application/json"],
             },
             {
+                "id": "stable-asset",
+                "name": "Stable-Asset Issuance",
+                "description": (
+                    "Issuer-agnostic stable-unit issuance layered on the "
+                    "Secure-Mint reserve floor. An issuer registers a unit, "
+                    "then mints and redeems against it; mints are hard-gated "
+                    "so circulating supply can never exceed the attested "
+                    "reserve. Policies carry a reserve source (custodial "
+                    "attester or on-chain vault), a PoR feed id, the allowed "
+                    "settlement rails, and a settlement destination. "
+                    "Registration requires the `issuer` API-key scope."
+                ),
+                "tags": [
+                    "stable-asset", "stablecoin", "issuance", "stable-unit",
+                    "reserve-floor", "issuer",
+                ],
+                "examples": [
+                    "Register a stable-asset policy for issuer=0x… unit_token=0x… symbol=USDX",
+                    "Read the stable-asset policy for issuer=0x… unit_token=0x…",
+                    "Mint 1000000 units of unit_token=0x… for issuer=0x…",
+                    "Redeem 500000 units of unit_token=0x… for issuer=0x…",
+                ],
+                "inputModes": ["text/plain", "application/json"],
+                "outputModes": ["application/json"],
+            },
+            {
                 "id": "hyperlane",
                 "name": "Hyperlane V3 (Sovereign Tenzro-ISM)",
                 "description": (
