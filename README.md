@@ -10,7 +10,7 @@ Connect AI agents to Tenzro Network using Google's [Agent-to-Agent (A2A)](https:
 
 The Tenzro A2A server is an installable Python package that lets any A2A-compatible agent interact with the blockchain — query balances, send transactions, manage identities, spawn sub-agents, trade on marketplaces, deploy contracts, and more. Install with `pip install tenzro-a2a-server` and run locally, or connect directly to the live testnet endpoint.
 
-**Live testnet:** `https://a2a.tenzro.network`
+**Live testnet:** `https://a2a.tenzro.xyz`
 **Local:** `http://localhost:3002`
 
 ## Installation
@@ -36,20 +36,20 @@ pip install .
 | A2A Stream | `POST /a2a/stream` | Server-Sent Events streaming |
 | Health | `GET /health` | Health check |
 
-> Note: the verification API at `api.tenzro.network` exposes `/verify/*`, `/health`, `/status`, and `/faucet` — no redundant `/api/` prefix (the subdomain already conveys it).
+> Note: the verification API at `api.tenzro.xyz` exposes `/verify/*`, `/health`, `/status`, and `/faucet` — no redundant `/api/` prefix (the subdomain already conveys it).
 
 ## Quick Start
 
 ### Discover capabilities
 
 ```bash
-curl https://a2a.tenzro.network/.well-known/agent.json
+curl https://a2a.tenzro.xyz/.well-known/agent.json
 ```
 
 ### Send a task
 
 ```bash
-curl -X POST https://a2a.tenzro.network/a2a \
+curl -X POST https://a2a.tenzro.xyz/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -67,7 +67,7 @@ curl -X POST https://a2a.tenzro.network/a2a \
 ### Stream a response (SSE)
 
 ```bash
-curl -X POST https://a2a.tenzro.network/a2a/stream \
+curl -X POST https://a2a.tenzro.xyz/a2a/stream \
   -H "Content-Type: application/json" \
   -H "Accept: text/event-stream" \
   -d '{
@@ -91,7 +91,7 @@ handler dispatches to `tenzro_getBlockRange` and reports the
 gaps:
 
 ```bash
-curl -X POST https://a2a.tenzro.network/a2a \
+curl -X POST https://a2a.tenzro.xyz/a2a \
   -H "Content-Type: application/json" \
   -d '{
     "jsonrpc": "2.0",
@@ -130,7 +130,7 @@ The Tenzro A2A agent exposes skills covering blockchain, AI, identity, payments,
 |-------|-----|-------------|
 | **Identity Management** | `identity` | Register/resolve DIDs (TDIP), set usernames, GDPR Article 17 right-to-erasure (`forget_identity`) |
 | **Settlement & Payments** | `settlement` | Micropayment channels, escrow, batch settlement |
-| **AP2 Payments** | `ap2-payments` | AP2 v0.2 sign + verify + validate-pair (intent → cart) for agent-to-agent autonomous financial transactions, with three-axis ceiling enforcement (mandate constraints + TDIP DelegationScope + runtime SpendingPolicy) |
+| **AP2 & x402 Payments** | `ap2-payments` | AP2 v0.2 sign + verify + validate-pair (intent → cart) for agent-to-agent autonomous financial transactions, with three-axis ceiling enforcement (mandate constraints + TDIP DelegationScope + runtime SpendingPolicy). Also covers the x402 Bazaar: sellers register HTTP-402 monetized resources (scheme `tenzro-hybrid` / `exact-eip3009` / `permit2` / `erc7710`), buyers discover them by scheme / network / asset / tags, and either side verifies a server-signed offer or derives a deterministic payment id |
 | **Stripe SPT** | `stripe-spt` | SharedPaymentToken issuance + verify with TDIP cap-resolver, AP2 cart-mandate cross-check, ERC-8004 ReputationRegistry cross-write on settled outcome, `granted_token.deactivated` webhook cascade into TDIP `apply_remote_revocation` |
 
 ### AI & Agents
@@ -177,6 +177,7 @@ The Tenzro A2A agent exposes skills covering blockchain, AI, identity, payments,
 | **Distributed MoE Serving** | `moe` | Decentralized expert-shard serving — shard map, top-k dispatch planning, replication policy, catalog topology, expert/gate weight loading into the local expert runtime, runtime status, and distributed layer forwards that fan hidden states out to expert holders and gather gate-weighted outputs |
 | **Operability Inspection** | `operability` | Read-only surface for SREs and monitoring agents — Tenzro Train inspection (list runs, run state, sealed receipts, Confidential-tier sealed-shard manifests, trainer auto-provisioning daemon status), SLA fault-detector parameters and probes (list outstanding, issue liveness probe), and state-sync snapshot inspection (list, manifest by height, chunk fetch); validator-registry reads route through the validator-lifecycle skill |
 | **Local Discovery & LAN Clustering** | `discovery` | mDNS local-segment peers, connectivity tier (`direct` / `relay_only` / `unreachable`), hardware self-profile, and deterministic layer-wise LAN cluster planning. Serving auto-triggers the cluster when a model exceeds one host: the node reads the GGUF header for shape, discovers members from gossiped `ClusterProfile` announcements, and runs a layer-wise pipeline — opt out with `force_single`. |
+| **Managed Databases** | `database` | Register and query owned databases the node serves across local / lan_cluster / network placement over an operator-run engine (PostgreSQL / Qdrant / Valkey) or an embedded index (Lance / Tantivy). List engines, create a database, issue a connection credential scoped to one database, run an engine-dialect query, rescale in place, and drop. Access is gated by `AccessPolicy` + an optional confidential seal |
 
 ## A2A Methods
 
@@ -240,7 +241,7 @@ from langchain.tools import Tool
 import requests
 
 def tenzro_a2a(query: str) -> str:
-    response = requests.post("https://a2a.tenzro.network/a2a", json={
+    response = requests.post("https://a2a.tenzro.xyz/a2a", json={
         "jsonrpc": "2.0",
         "method": "tasks/send",
         "params": {
@@ -273,7 +274,7 @@ import requests
 @tool("Tenzro Blockchain")
 def tenzro_blockchain(query: str) -> str:
     """Interact with Tenzro Network — wallets, identities, AI inference, payments, agents, tokens, contracts, verification."""
-    response = requests.post("https://a2a.tenzro.network/a2a", json={
+    response = requests.post("https://a2a.tenzro.xyz/a2a", json={
         "jsonrpc": "2.0",
         "method": "tasks/send",
         "params": {
@@ -317,10 +318,10 @@ Your Agent                    Tenzro Node
 
 | Protocol | Best For | Endpoint |
 |----------|----------|----------|
-| **A2A** (this) | Natural language task delegation | `a2a.tenzro.network/a2a` |
-| **MCP** | Structured tool calls from Claude/Cursor | `mcp.tenzro.network/mcp` |
-| **JSON-RPC** | Direct EVM-compatible RPC | `rpc.tenzro.network` |
-| **Web API** | REST verification and status | `api.tenzro.network` |
+| **A2A** (this) | Natural language task delegation | `a2a.tenzro.xyz/a2a` |
+| **MCP** | Structured tool calls from Claude/Cursor | `mcp.tenzro.xyz/mcp` |
+| **JSON-RPC** | Direct EVM-compatible RPC | `rpc.tenzro.xyz` |
+| **Web API** | REST verification and status | `api.tenzro.xyz` |
 
 ## Running the Server
 
@@ -344,9 +345,9 @@ curl http://localhost:3002/.well-known/agent.json
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `TENZRO_RPC_URL` | `https://rpc.tenzro.network` | Tenzro JSON-RPC endpoint |
-| `TENZRO_API_URL` | `https://api.tenzro.network` | Tenzro Web API endpoint |
-| `TENZRO_A2A_BASE_URL` | `https://a2a.tenzro.network` | Base URL for Agent Card |
+| `TENZRO_RPC_URL` | `https://rpc.tenzro.xyz` | Tenzro JSON-RPC endpoint |
+| `TENZRO_API_URL` | `https://api.tenzro.xyz` | Tenzro Web API endpoint |
+| `TENZRO_A2A_BASE_URL` | `https://a2a.tenzro.xyz` | Base URL for Agent Card |
 
 Command-line options:
 
